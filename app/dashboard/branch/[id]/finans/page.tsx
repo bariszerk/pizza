@@ -1,4 +1,4 @@
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,9 @@ export default async function BranchFinancePage({params}: {params: Promise<{ id:
   const branchId = (await params).id;
   return (
     <SidebarProvider>
+      <div className="md:hidden p-2">
+        <SidebarTrigger />
+      </div>
       <AppSidebar />
       <SidebarInset>
         <header className="p-4 border-b">

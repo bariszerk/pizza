@@ -1,4 +1,4 @@
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 
 export default async function BranchEmployeesPage({params}: {params: Promise<{ id: string }>}) {
@@ -13,6 +13,9 @@ export default async function BranchEmployeesPage({params}: {params: Promise<{ i
 
   return (
     <SidebarProvider>
+      <div className="md:hidden p-2">
+        <SidebarTrigger />
+      </div>
       <AppSidebar />
       <SidebarInset>
         <header className="p-4 border-b">
