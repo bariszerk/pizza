@@ -1,15 +1,10 @@
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 
-export default async function BranchEmployeesPage({ params }: {
-  params: { id: string };
-}) {
+export default async function BranchEmployeesPage({params}: {params: Promise<{ id: string }>}) {
+  const branchId = (await params).id;
 
-  
-  const param = await params
-  const branchId = param.id;
-
-  // Örnek çalışan verileri; gerçek uygulamada API veya veritabanından çekilebilir.
+  // Örnek çalışan verileri
   const employees = [
     { id: "1", name: "Ahmet Yılmaz" },
     { id: "2", name: "Ayşe Demir" },

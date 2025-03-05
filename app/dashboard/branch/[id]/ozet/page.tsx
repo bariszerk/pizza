@@ -2,14 +2,8 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
 
-export default async function BranchSummaryPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-
-  const param = await params
-  const branchId = param.id;
+export default async function BranchSummaryPage({params}: {params: Promise<{ id: string }>}) {
+  const branchId = (await params).id;
 
   return (
     <SidebarProvider>
