@@ -16,12 +16,12 @@ import {
     TabsTrigger,
 } from "@/components/ui/tabs"
 
-import { UserNav } from "./components/user-nav"
-import { MainNav } from "./components/main-nav"
-import { Search } from "./components/search"
-import { CalendarDateRangePicker } from "./components/date-range-picker"
-import { Overview } from "./components/overview"
-import { RecentSales } from "./components/recent-sales"
+import { UserNav } from "./dashboard_pages/user-nav"
+import { MainNav } from "./dashboard_pages/main-nav"
+import { Search } from "./dashboard_pages/search"
+import { CalendarDateRangePicker } from "./dashboard_pages/date-range-picker"
+import { Overview } from "./dashboard_pages/overview"
+import { RecentSales } from "./dashboard_pages/recent-sales"
 // import TeamSwitcher from "./components/team-switcher"
 
 export const metadata: Metadata = {
