@@ -22,7 +22,7 @@ import { Search } from "./components/search"
 import { CalendarDateRangePicker } from "./components/date-range-picker"
 import { Overview } from "./components/overview"
 import { RecentSales } from "./components/recent-sales"
-import TeamSwitcher from "./components/team-switcher"
+// import TeamSwitcher from "./components/team-switcher"
 
 export const metadata: Metadata = {
     title: "Dashboard",
@@ -51,7 +51,7 @@ export default function DashboardPage() {
             <div className="hidden flex-col md:flex">
                 <div className="border-b">
                     <div className="flex h-16 items-center px-4">
-                        <TeamSwitcher />
+                        {/* <TeamSwitcher /> */}
                         <MainNav className="mx-6" />
                         <div className="ml-auto flex items-center space-x-4">
                             <Search />
