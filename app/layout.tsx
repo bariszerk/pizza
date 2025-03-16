@@ -19,13 +19,10 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <SidebarProvider>
-            <div className="flex min-h-screen">
-              <AppSidebar />
-              <main className="flex-1 ml-0 md:ml-[var(--sidebar-width)] p-4 flex items-center justify-center">
-                <SidebarTrigger />
-                {children}
-              </main>
-            </div>
+            <AppSidebar />
+            <main className="w-full h-full">
+              {children}
+            </main>
           </SidebarProvider>
         </ThemeProvider>
       </body>
