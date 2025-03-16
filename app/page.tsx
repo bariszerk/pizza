@@ -1,6 +1,5 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ModeToggle } from "@/components/ui/theme-toggle-button"
 
 export default function Home() {
   return (
@@ -12,9 +11,6 @@ export default function Home() {
         <Link href="/branch">
           <Button variant="outline">Branch</Button>
         </Link>
-      </div>
-      <div className="absolute bottom-4 left-4">
-        <ModeToggle />
       </div>
     </div>
   )
