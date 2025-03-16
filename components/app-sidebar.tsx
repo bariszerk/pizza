@@ -1,4 +1,4 @@
-import { Calendar, Home, Inbox, Search, Settings } from "lucide-react"
+import { GitBranch, Home, LayoutDashboard} from "lucide-react"
 
 import {
   Sidebar,
@@ -17,29 +17,19 @@ import { ModeToggle } from "./ui/theme-toggle-button"
 const items = [
   {
     title: "Home",
-    url: "#",
+    url: "/",
     icon: Home,
   },
   {
-    title: "Inbox",
-    url: "#",
-    icon: Inbox,
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: LayoutDashboard,
   },
   {
-    title: "Calendar",
-    url: "#",
-    icon: Calendar,
-  },
-  {
-    title: "Search",
-    url: "#",
-    icon: Search,
-  },
-  {
-    title: "Settings",
-    url: "#",
-    icon: Settings,
-  },
+    title: "Şube",
+    url: "/branch",
+    icon: GitBranch,
+  }
 ]
 
 export function AppSidebar() {
