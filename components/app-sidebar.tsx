@@ -1,5 +1,5 @@
-import { GitBranch, Home, LayoutDashboard} from "lucide-react"
-
+import Link from "next/link";
+import { GitBranch, Home, LayoutDashboard } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -10,10 +10,13 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { ModeToggle } from "./ui/theme-toggle-button"
+  SidebarMenuSub,
+  SidebarMenuSubItem
+} from "@/components/ui/sidebar";
+import { ModeToggle } from "./ui/theme-toggle-button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 
-// Menu items.
+// Menü öğeleri
 const items = [
   {
     title: "Home",
@@ -27,10 +30,20 @@ const items = [
   },
   {
     title: "Şube",
-    url: "/branch",
     icon: GitBranch,
-  }
-]
+    // URL yerine branch id'si kullanıyoruz
+    items: [
+      {
+        title: "Adana",
+        id: "adana",
+      },
+      {
+        title: "Kayseri",
+        id: "kayseri",
+      },
+    ],
+  },
+];
 
 export function AppSidebar() {
   return (
@@ -40,27 +53,54 @@ export function AppSidebar() {
           <SidebarGroupLabel>Application</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {items.map((item) => {
+                if (item.items && item.items.length > 0) {
+                  return (
+                    <Collapsible key={item.title} defaultOpen className="group/collapsible">
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {item.items.map((subItem) => (
+                              <SidebarMenuSubItem key={subItem.title}>
+                                <Link href={`/branch/${subItem.id}`}>
+                                  <span>{subItem.title}</span>
+                                </Link>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  );
+                }
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <Link href={item.url!}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-                <ModeToggle />
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <ModeToggle />
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
