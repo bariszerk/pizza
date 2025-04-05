@@ -1,31 +1,24 @@
-import { ThemeProvider } from "@/components/ui/theme-provider";
-import "./globals.css";
-import { AppSidebar } from "@/components/app-sidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { TopNavbar } from '@/components/navbar-top';
+import TransitionWrapper from '@/components/transition-wrapper';
+import { ThemeProvider } from '@/components/ui/theme-provider';
+import './globals.css';
 
-export default async function RootLayout({
-  children,
+export default function RootLayout({
+	children,
 }: {
-  children: React.ReactNode;
+	children: React.ReactNode;
 }) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <head />
-      <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <SidebarProvider>
-            <AppSidebar />
-            <main className="w-full h-full">
-              {children}
-            </main>
-          </SidebarProvider>
-        </ThemeProvider>
-      </body>
-    </html>
-  );
+	return (
+		<html lang="en" suppressHydrationWarning>
+			<head />
+			<body>
+				<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+					<TopNavbar />
+					<main className="container mx-auto p-4">
+						<TransitionWrapper>{children}</TransitionWrapper>
+					</main>
+				</ThemeProvider>
+			</body>
+		</html>
+	);
 }
