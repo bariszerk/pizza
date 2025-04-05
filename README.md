@@ -16,3 +16,5 @@
     - ilk etapta hesabı askıda bulunacak
     - sonra biz bu kişiye yetki vereceğiz.
     - şube yetkilisi ise direkt "/branch/[id]"
+
+    - change log tutmakta fayda var geçmişe yönelik değişikliklerde
