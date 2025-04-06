@@ -27,17 +27,6 @@ export default function BranchPage() {
 	const [date, setDate] = useState(new Date());
 	const [message, setMessage] = useState('');
 
-	// Örnek GET isteği (eğer sayfada tablo vs. göstermek istemiyorsan bunu silebilirsin)
-	// useEffect(() => {
-	//   if (!id) return;
-	//   async function fetchData() {
-	//     const res = await fetch(`/api/branch/${id}`);
-	//     const data = await res.json();
-	//     // Bir veri işleme yapılacaksa burada
-	//   }
-	//   fetchData();
-	// }, [id]);
-
 	// Form submit ile POST isteği
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();

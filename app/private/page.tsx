@@ -7,7 +7,7 @@ export default async function PrivatePage() {
 		redirect('/login');
 	}
 	return (
-		<main className="flex  items-center justify-center p-6">
+		<main className="flex items-center justify-center p-6">
 			<div className="w-full max-w-md p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
 				<h1 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100">
 					Bilgilerim
