@@ -23,7 +23,12 @@ export async function middleware(request: NextRequest) {
 
   // 3) Base64-JSON’u decode et
   // Cookie değeri "base64-<encodedJson>" formatında geliyor
-  let sessionData: any;
+  interface SessionData {
+    user?: {
+      id?: string;
+    };
+  }
+  let sessionData: SessionData;
   try {
     const b64 = raw.startsWith('base64-') ? raw.slice('base64-'.length) : raw;
     const json = atob(b64);

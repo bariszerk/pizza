@@ -1,6 +1,8 @@
+'use client';
 import { TopNavbar } from '@/components/navbar-top';
 import TransitionWrapper from '@/components/transition-wrapper';
 import { ThemeProvider } from '@/components/ui/theme-provider';
+import { useAutoSignOut } from '@/hooks/auto-sign-out';
 import './globals.css';
 
 export default function RootLayout({
@@ -8,6 +10,7 @@ export default function RootLayout({
 }: {
 	children: React.ReactNode;
 }) {
+	useAutoSignOut(10);
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head />

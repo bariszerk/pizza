@@ -4,53 +4,45 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from '@/components/ui/table';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-interface BranchFinancial {
-	id: number;
-	branch_id: string;
-	expenses: number;
-	earnings: number;
-	summary: string;
-	date: string; // eğer date olarak almak isterseniz, string yerine Date kullanıp parse etmeniz gerekebilir
-	created_at: string; // yine tarih parse ihtiyacı olabilir
-}
+// interface BranchFinancial {
+// 	// Eğer herhangi bir nedenle ihtiyacın varsa
+// 	// id: number;
+// 	// branch_id: string;
+// 	expenses: number;
+// 	earnings: number;
+// 	summary: string;
+// 	date: string;
+// 	created_at: string;
+// }
 
 export default function BranchPage() {
-	const { id } = useParams(); // URL'deki branch id'sini alıyoruz
+	const { id } = useParams();
 	const [expenses, setExpenses] = useState('');
 	const [earnings, setEarnings] = useState('');
 	const [summary, setSummary] = useState('');
 	const [date, setDate] = useState(new Date());
 	const [message, setMessage] = useState('');
-	const [financialData, setFinancialData] = useState<BranchFinancial[]>([]);
 
-	// Şubenin finansal özetlerini GET ile çekiyoruz
-	useEffect(() => {
-		if (!id) return;
+	// Örnek GET isteği (eğer sayfada tablo vs. göstermek istemiyorsan bunu silebilirsin)
+	// useEffect(() => {
+	//   if (!id) return;
+	//   async function fetchData() {
+	//     const res = await fetch(`/api/branch/${id}`);
+	//     const data = await res.json();
+	//     // Bir veri işleme yapılacaksa burada
+	//   }
+	//   fetchData();
+	// }, [id]);
 
-		async function fetchData() {
-			const res = await fetch(`/api/branch/${id}`);
-			const data = await res.json();
-			setFinancialData(data);
-		}
-
-		fetchData();
-	}, [id]);
-
-	// Form submit ile POST isteği gönderiyoruz
+	// Form submit ile POST isteği
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setMessage('');
+
 		const payload = {
 			expenses,
 			earnings,
@@ -65,12 +57,11 @@ export default function BranchPage() {
 		});
 
 		if (res.ok) {
-			// const data = await res.json();
 			setMessage('Data saved successfully!');
-			// Listeleri güncellemek için yeniden verileri çekelim
-			const newRes = await fetch(`/api/branch/${id}`);
-			const newData = await newRes.json();
-			setFinancialData(newData);
+			// İstersen burada formu temizleyebilirsin
+			// setExpenses('');
+			// setEarnings('');
+			// setSummary('');
 		} else {
 			const error = await res.json();
 			setMessage(`Error: ${error.error}`);
@@ -78,66 +69,58 @@ export default function BranchPage() {
 	};
 
 	return (
-		<div className="max-w-7xl mx-auto mt-10 flex gap-4">
-			<div className="flex-1">
-				<Card>
-					<CardContent className="p-4 space-y-4">
-						<h2 className="text-xl font-semibold">Branch Financial Summary</h2>
-						<Calendar
-							mode="single"
-							selected={date}
-							onSelect={(newDate) => setDate(newDate || new Date())}
-						/>
-						<form onSubmit={handleSubmit} className="space-y-4">
-							<Input
-								type="number"
-								placeholder="Expenses"
-								value={expenses}
-								onChange={(e) => setExpenses(e.target.value)}
+		<div
+			// Sayfa yüksekliği boyunca ortalamak için min-h-auto + flex center
+			className="container mx-auto min-h-auto flex items-center justify-center px-4"
+		>
+			<AnimatePresence>
+				<motion.div
+					// Framer Motion animasyonu
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					exit={{ opacity: 0, y: 20 }}
+					transition={{ duration: 0.4 }}
+					// Kartın maksi. genişliğini sınırlıyoruz, masaüstünde ortalı duracak
+					className="w-full max-w-md"
+				>
+					<Card>
+						<CardContent className="p-4 space-y-4">
+							<h2 className="text-xl font-semibold">
+								Branch Financial Summary
+							</h2>
+							<Calendar
+								mode="single"
+								selected={date}
+								onSelect={(newDate) => setDate(newDate || new Date())}
 							/>
-							<Input
-								type="number"
-								placeholder="Earnings"
-								value={earnings}
-								onChange={(e) => setEarnings(e.target.value)}
-							/>
-							<Input
-								type="text"
-								placeholder="Summary"
-								value={summary}
-								onChange={(e) => setSummary(e.target.value)}
-							/>
-							<Button type="submit" className="w-full">
-								Save
-							</Button>
-						</form>
-						{message && <p>{message}</p>}
-					</CardContent>
-				</Card>
-			</div>
-			<div className="flex-1">
-				<h3 className="text-lg font-bold mb-2">Existing Summaries</h3>
-				<Table className="rounded-2xl border border-gray-300">
-					<TableHeader>
-						<TableRow>
-							<TableHead className="border p-2">Tarih</TableHead>
-							<TableHead className="border p-2">Harcamalar</TableHead>
-							<TableHead className="border p-2">Kazanılan</TableHead>
-							<TableHead className="border p-2">Özet</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{financialData.map((item) => (
-							<TableRow key={item.id}>
-								<TableCell className="border p-2">{item.date}</TableCell>
-								<TableCell className="border p-2">{item.expenses}</TableCell>
-								<TableCell className="border p-2">{item.earnings}</TableCell>
-								<TableCell className="border p-2">{item.summary}</TableCell>
-							</TableRow>
-						))}
-					</TableBody>
-				</Table>
-			</div>
+							<form onSubmit={handleSubmit} className="space-y-4">
+								<Input
+									type="number"
+									placeholder="Expenses"
+									value={expenses}
+									onChange={(e) => setExpenses(e.target.value)}
+								/>
+								<Input
+									type="number"
+									placeholder="Earnings"
+									value={earnings}
+									onChange={(e) => setEarnings(e.target.value)}
+								/>
+								<Input
+									type="text"
+									placeholder="Summary"
+									value={summary}
+									onChange={(e) => setSummary(e.target.value)}
+								/>
+								<Button type="submit" className="w-full">
+									Save
+								</Button>
+							</form>
+							{message && <p>{message}</p>}
+						</CardContent>
+					</Card>
+				</motion.div>
+			</AnimatePresence>
 		</div>
 	);
 }
