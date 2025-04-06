@@ -3,7 +3,7 @@ import { createClient } from '@/utils/supabase/client';
 import { NextResponse } from "next/server";
 
 // GET: Belirli bir şubenin finansal özetlerini getirir.
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: branchId } = await params;
   
   const { data, error } = await createClient()
@@ -19,8 +19,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // POST: Yeni bir finansal özet ekler.
-export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const { id: branchId } = params;
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id: branchId } = await params;
   const body = await request.json();
   // Beklenen alanlar: expenses, earnings, summary, date
   const { expenses, earnings, summary, date } = body;

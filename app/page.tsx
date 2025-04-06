@@ -33,7 +33,7 @@ export default function Home() {
 
 	if (loading) {
 		return (
-			<div className="flex items-center justify-center min-h-screen">
+			<div className="flex items-center justify-center min-h-auto">
 				<p>Yükleniyor...</p>
 			</div>
 		);
@@ -42,7 +42,7 @@ export default function Home() {
 	// Eğer login olmamışsa veya user rolündeyse
 	if (!role || role === 'user') {
 		return (
-			<div className="flex flex-col items-center justify-center min-h-screen space-y-4 px-4 text-center">
+			<div className="flex flex-col items-center justify-center min-h-auto space-y-4 px-4 text-center">
 				{!role && (
 					// Henüz login olmamış kullanıcılar için
 					<Link href="/login">
@@ -61,7 +61,7 @@ export default function Home() {
 
 	// admin, manager, branch_staff gibi roller için normal ana sayfa
 	return (
-		<div className="flex flex-col items-center justify-center min-h-screen space-y-4">
+		<div className="flex flex-col items-center justify-center min-h-auto space-y-4">
 			<Link href="/login">
 				<Button variant="outline">Go to Login</Button>
 			</Link>
