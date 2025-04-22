@@ -72,7 +72,8 @@ export function TopNavbar() {
 			label: 'Şube',
 			roles: ['branch_staff', 'manager', 'admin'],
 		},
-		{ href: '/admin/roles', label: 'Role Management', roles: ['admin'] },
+		{ href: '/admin/roles', label: 'Roles', roles: ['admin'] },
+		{ href: '/admin/branches', label: 'Branches', roles: ['admin'] },
 	];
 
 	const filteredLinks = navLinks.filter((link) =>
