@@ -12,7 +12,6 @@
 
 ## Barış
 - login ve sign up sayfası yapılacak.
-    - signuptan üye olan bir kişi ilk etapta hiç bir şey göremeyecek yetkiniz için "yetkiliniz ile görüşün." yazısını görecek (ana sayfada)
     - ilk etapta hesabı askıda bulunacak
     - sonra biz bu kişiye yetki vereceğiz.
     - şube yetkilisi ise direkt "/branch/[id]"

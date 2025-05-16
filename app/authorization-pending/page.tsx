@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 export default function AuthorizationPendingPage() {
 	return (
-		<div className="flex flex-col items-center justify-center min-h-screen space-y-6 px-4 text-center">
+		<div className="flex flex-col items-center justify-center min-h-auto space-y-6 px-4 text-center">
 			<h1 className="text-3xl font-semibold">Yetkilendirme Bekleniyor</h1>
 			<p className="text-gray-600 max-w-md">
 				Hesabınıza yönetici tarafından rol ataması yapılana kadar bu alana

@@ -51,6 +51,7 @@ type Branch = {
 	assigned_staff?: UserProfile[];
 };
 
+
 type Profile = {
 	id: string;
 	first_name: string | null;
@@ -913,7 +914,6 @@ export default function AdminBranchesPage() {
 						</div>
 					</ConfirmDialog>
 				)}
-
 			<ConfirmDialog
 				open={confirmDialogOpen}
 				onClose={() => setConfirmDialogOpen(false)}
