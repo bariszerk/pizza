@@ -1,9 +1,11 @@
+// components/navbar-top.tsx
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { ModeToggle } from '@/components/ui/theme-toggle-button';
 import { createClient } from '@/utils/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
+import { MenuIcon, XIcon } from 'lucide-react'; // Hamburger ve kapatma ikonu için
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { UserStatus } from './user-status';
@@ -11,32 +13,41 @@ import { UserStatus } from './user-status';
 export function TopNavbar() {
 	const supabase = createClient();
 	const [role, setRole] = useState<string | null>(null);
+	const [staffBranchId, setStaffBranchId] = useState<string | null>(null); // Şube personeli için şube ID'si
 	const [loading, setLoading] = useState(true);
-
-	// Hamburger menü açık mı?
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-	// Rol bilgisini çek
 	useEffect(() => {
-		const fetchRole = async (userId: string) => {
-			const { data, error } = await supabase
+		const fetchUserData = async (userId: string) => {
+			const { data: profile, error } = await supabase
 				.from('profiles')
-				.select('role')
+				.select('role, staff_branch_id') // staff_branch_id'yi de çekiyoruz
 				.eq('id', userId)
 				.single();
-			if (!error && data) {
-				setRole(data.role);
+
+			if (!error && profile) {
+				setRole(profile.role);
+				if (profile.role === 'branch_staff') {
+					setStaffBranchId(profile.staff_branch_id);
+				} else {
+					setStaffBranchId(null); // Diğer roller için null
+				}
 			} else {
 				setRole(null);
+				setStaffBranchId(null);
+				if (error) {
+					console.error('Error fetching profile:', error.message);
+				}
 			}
 			setLoading(false);
 		};
 
 		supabase.auth.getUser().then(({ data: { user } }) => {
 			if (user) {
-				fetchRole(user.id);
+				fetchUserData(user.id);
 			} else {
 				setRole(null);
+				setStaffBranchId(null);
 				setLoading(false);
 			}
 		});
@@ -45,104 +56,138 @@ export function TopNavbar() {
 			(_event, session) => {
 				if (!session?.user) {
 					setRole(null);
+					setStaffBranchId(null);
 					setLoading(false);
 					return;
 				}
 				setLoading(true);
-				fetchRole(session.user.id);
+				fetchUserData(session.user.id);
 			}
 		);
 
 		return () => {
-			listener.subscription.unsubscribe();
+			listener?.subscription?.unsubscribe();
 		};
 	}, [supabase]);
 
-	if (loading) return null;
+	// Yükleniyorken veya rol bilgisi henüz gelmediyse, temel bir navbar veya null gösterilebilir.
+	// Ya da sadece kullanıcı giriş yapmışsa linkleri göster.
+	// if (loading) return null; // veya bir iskelet (skeleton) navbar
 
-	// Menüde gösterilecek linkler (role bazlı)
-	const navLinks = [
+	const baseNavLinks = [
 		{
 			href: '/dashboard',
 			label: 'Dashboard',
-			roles: ['branch_staff', 'manager', 'admin'],
+			roles: ['manager', 'admin'],
+		},
+		// Şube linki dinamik olacak
+		{
+			href: '/admin/roles',
+			label: 'Rol Yönetimi',
+			roles: ['admin'],
 		},
 		{
-			href: '/branch/adana',
-			label: 'Şube',
-			roles: ['branch_staff', 'manager', 'admin'],
+			href: '/admin/branches',
+			label: 'Şube Yönetimi',
+			roles: ['admin', 'manager'],
 		},
-		{ href: '/admin/roles', label: 'Roles', roles: ['admin'] },
-		{ href: '/admin/branches', label: 'Branches', roles: ['admin'] },
 	];
 
-	const filteredLinks = navLinks.filter((link) =>
-		link.roles.includes(role ?? 'guest')
+	// branch_staff için dinamik şube linkini oluştur
+	const dynamicNavLinks = [...baseNavLinks];
+	if (role === 'branch_staff') {
+		if (staffBranchId) {
+			dynamicNavLinks.unshift({
+				// En başa ekleyelim
+				href: `/branch/${staffBranchId}`,
+				label: 'Şubem',
+				roles: ['branch_staff'],
+			});
+		} else {
+			// Eğer şube ID'si yoksa (henüz atanmamışsa)
+			// Şube linkini gösterme veya /authorization-pending'e yönlendirebilirsin
+			// Şimdilik göstermeyelim veya disabled yapalım. Ya da farklı bir label ile.
+			dynamicNavLinks.unshift({
+				href: '/authorization-pending',
+				label: 'Şubem (Atanmadı)',
+				roles: ['branch_staff'],
+			});
+		}
+	} else if (role === 'manager') {
+		// Yöneticiler için belki "Şubelerim" gibi bir genel sayfa olabilir
+		// Veya dashboard üzerinden şubelerini seçebilirler. Şimdilik manager için özel bir şube linki eklemiyoruz.
+		// Dashboard'da kendi şubelerini görecekler.
+	}
+
+	const filteredLinks = dynamicNavLinks.filter(
+		(link) => link.roles.includes(role ?? 'guest') // 'guest' rolü hiç link görmemeli (login olmamış)
 	);
 
-	// Hamburger menü toggle
 	const toggleMobileMenu = () => {
 		setIsMobileMenuOpen((prev) => !prev);
 	};
 
 	return (
-		<header className="bg-background border-b border-border px-4 py-3">
+		<header className="bg-background border-b border-border px-4 py-3 sticky top-0 z-50">
 			<div className="container mx-auto flex items-center justify-between">
-				{/* Sol taraf: Hamburger (mobil) + Logo */}
 				<div className="flex items-center space-x-3">
-					{/* Hamburger butonu (küçük ekranlarda görünür, lg: gizli) */}
 					<button
-						className="block lg:hidden p-2 focus:outline-none"
+						className="lg:hidden p-2 focus:outline-none"
 						onClick={toggleMobileMenu}
 						aria-label="Open Menu"
 					>
-						{/* Basit bir hamburger ikonu (3 çizgi) */}
-						<div className="w-5 h-0.5 bg-foreground mb-1 transition-all" />
-						<div className="w-5 h-0.5 bg-foreground mb-1 transition-all" />
-						<div className="w-5 h-0.5 bg-foreground transition-all" />
+						{isMobileMenuOpen ? (
+							<XIcon className="h-6 w-6" />
+						) : (
+							<MenuIcon className="h-6 w-6" />
+						)}
 					</button>
-
-					{/* Logo / Brand */}
 					<div className="text-lg font-semibold">
-						<Link href="/dashboard">Ana Sayfa</Link>
+						<Link href={role ? '/dashboard' : '/'}>Pizza Yönetim</Link>{' '}
+						{/* Giriş yapılmadıysa ana sayfa */}
 					</div>
 				</div>
 
-				{/* Desktop Nav (lg: görünür), mobilde gizle */}
-				<nav className="hidden lg:flex items-center space-x-4">
+				<nav className="hidden lg:flex items-center space-x-1">
 					{filteredLinks.map((link) => (
-						<Link key={link.href} href={link.href}>
-							<Button variant="ghost">{link.label}</Button>
+						<Link key={link.href} href={link.href} passHref legacyBehavior>
+							<Button asChild variant="ghost" className="text-sm">
+								<a>{link.label}</a>
+							</Button>
 						</Link>
 					))}
 				</nav>
 
-				{/* Sağ taraf: ModeToggle + User Avatar (her zaman görünür) */}
-				<div className="flex items-center space-x-4">
+				<div className="flex items-center space-x-2 sm:space-x-4">
 					<ModeToggle />
 					<UserStatus />
 				</div>
 			</div>
 
-			{/* Mobil menü - Framer Motion ile aç/kapa animasyonu */}
 			<AnimatePresence>
 				{isMobileMenuOpen && (
 					<motion.nav
 						initial={{ height: 0, opacity: 0 }}
 						animate={{ height: 'auto', opacity: 1 }}
 						exit={{ height: 0, opacity: 0 }}
-						transition={{ duration: 0.3 }}
-						className="lg:hidden overflow-hidden"
+						transition={{ duration: 0.2 }}
+						className="lg:hidden overflow-hidden border-t border-border"
 					>
-						<div className="flex flex-col space-y-2 px-4 pt-2 pb-4">
+						<div className="flex flex-col space-y-1 px-2 pt-2 pb-3">
 							{filteredLinks.map((link) => (
 								<Link
 									key={link.href}
 									href={link.href}
+									passHref
+									legacyBehavior
 									onClick={() => setIsMobileMenuOpen(false)}
 								>
-									<Button variant="ghost" className="w-full text-left">
-										{link.label}
+									<Button
+										asChild
+										variant="ghost"
+										className="w-full justify-start text-base py-3"
+									>
+										<a>{link.label}</a>
 									</Button>
 								</Link>
 							))}
