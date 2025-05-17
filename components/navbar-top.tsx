@@ -5,46 +5,62 @@ import { Button } from '@/components/ui/button';
 import { ModeToggle } from '@/components/ui/theme-toggle-button';
 import { createClient } from '@/utils/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MenuIcon, XIcon } from 'lucide-react'; // Hamburger ve kapatma ikonu için
+import { MenuIcon, XIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation'; // 1. useRouter import edildi
+import { useCallback, useEffect, useState } from 'react';
 import { UserStatus } from './user-status';
 
 export function TopNavbar() {
 	const supabase = createClient();
+	const router = useRouter();
+	const pathname = usePathname(); // Mevcut yolu almak için
 	const [role, setRole] = useState<string | null>(null);
-	const [staffBranchId, setStaffBranchId] = useState<string | null>(null); // Şube personeli için şube ID'si
+	const [staffBranchId, setStaffBranchId] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-	useEffect(() => {
-		const fetchUserData = async (userId: string) => {
+	// fetchUserData'yı useCallback ile sarmala, çünkü useEffect bağımlılıklarında kullanılacak
+	const fetchUserData = useCallback(
+		async (userId: string) => {
+			console.log('TopNavbar: Fetching user data for ID:', userId);
 			const { data: profile, error } = await supabase
 				.from('profiles')
-				.select('role, staff_branch_id') // staff_branch_id'yi de çekiyoruz
+				.select('role, staff_branch_id')
 				.eq('id', userId)
 				.single();
 
 			if (!error && profile) {
+				console.log(
+					'TopNavbar: Profile fetched successfully. Role:',
+					profile.role
+				);
 				setRole(profile.role);
 				if (profile.role === 'branch_staff') {
 					setStaffBranchId(profile.staff_branch_id);
 				} else {
-					setStaffBranchId(null); // Diğer roller için null
+					setStaffBranchId(null);
 				}
 			} else {
+				console.warn(
+					'TopNavbar: Profile fetch error or no profile. Setting role to null. Error:',
+					error?.message
+				);
 				setRole(null);
 				setStaffBranchId(null);
-				if (error) {
-					console.error('Error fetching profile:', error.message);
-				}
 			}
 			setLoading(false);
-		};
+		},
+		[supabase]
+	); // supabase bağımlılığı
 
-		supabase.auth.getUser().then(({ data: { user } }) => {
-			if (user) {
-				fetchUserData(user.id);
+	useEffect(() => {
+		console.log('TopNavbar: useEffect for auth state initiated.');
+		// Bileşen yüklendiğinde mevcut kullanıcıyı kontrol et
+		supabase.auth.getSession().then(({ data: { session } }) => {
+			console.log('TopNavbar: Initial getSession. User ID:', session?.user?.id);
+			if (session?.user) {
+				fetchUserData(session.user.id);
 			} else {
 				setRole(null);
 				setStaffBranchId(null);
@@ -52,27 +68,38 @@ export function TopNavbar() {
 			}
 		});
 
+		// Auth durumundaki değişiklikleri dinle
 		const { data: listener } = supabase.auth.onAuthStateChange(
-			(_event, session) => {
-				if (!session?.user) {
+			async (_event, session) => {
+				if (_event === 'SIGNED_OUT' || !session?.user) {
 					setRole(null);
 					setStaffBranchId(null);
 					setLoading(false);
+					// Mevcut yol /login değilse yönlendir.
+					// Bu, sayfa zaten /login ise gereksiz yönlendirmeyi önler.
+					if (pathname !== '/login' && pathname !== '/signup') {
+						console.log('TopNavbar: Redirecting to /login from:', pathname);
+						router.push('/login');
+					} else {
+						router.refresh(); // Login sayfasındaysa bile refresh et ki her şey güncel kalsın.
+					}
 					return;
 				}
-				setLoading(true);
-				fetchUserData(session.user.id);
+
+				// SIGNED_IN veya USER_UPDATED gibi diğer durumlar
+				if (session?.user) {
+					setLoading(true);
+					await fetchUserData(session.user.id);
+				}
 			}
 		);
 
 		return () => {
 			listener?.subscription?.unsubscribe();
 		};
-	}, [supabase]);
+	}, [supabase, router, fetchUserData, pathname]); // pathname eklendi
 
-	// Yükleniyorken veya rol bilgisi henüz gelmediyse, temel bir navbar veya null gösterilebilir.
-	// Ya da sadece kullanıcı giriş yapmışsa linkleri göster.
-	// if (loading) return null; // veya bir iskelet (skeleton) navbar
+	// ... (geri kalan kod aynı) ...
 
 	const baseNavLinks = [
 		{
@@ -80,7 +107,6 @@ export function TopNavbar() {
 			label: 'Dashboard',
 			roles: ['manager', 'admin'],
 		},
-		// Şube linki dinamik olacak
 		{
 			href: '/admin/roles',
 			label: 'Rol Yönetimi',
@@ -93,39 +119,40 @@ export function TopNavbar() {
 		},
 	];
 
-	// branch_staff için dinamik şube linkini oluştur
 	const dynamicNavLinks = [...baseNavLinks];
 	if (role === 'branch_staff') {
 		if (staffBranchId) {
 			dynamicNavLinks.unshift({
-				// En başa ekleyelim
 				href: `/branch/${staffBranchId}`,
 				label: 'Şubem',
 				roles: ['branch_staff'],
 			});
 		} else {
-			// Eğer şube ID'si yoksa (henüz atanmamışsa)
-			// Şube linkini gösterme veya /authorization-pending'e yönlendirebilirsin
-			// Şimdilik göstermeyelim veya disabled yapalım. Ya da farklı bir label ile.
 			dynamicNavLinks.unshift({
 				href: '/authorization-pending',
 				label: 'Şubem (Atanmadı)',
 				roles: ['branch_staff'],
 			});
 		}
-	} else if (role === 'manager') {
-		// Yöneticiler için belki "Şubelerim" gibi bir genel sayfa olabilir
-		// Veya dashboard üzerinden şubelerini seçebilirler. Şimdilik manager için özel bir şube linki eklemiyoruz.
-		// Dashboard'da kendi şubelerini görecekler.
 	}
 
-	const filteredLinks = dynamicNavLinks.filter(
-		(link) => link.roles.includes(role ?? 'guest') // 'guest' rolü hiç link görmemeli (login olmamış)
+	const filteredLinks = dynamicNavLinks.filter((link) =>
+		link.roles.includes(role ?? 'guest')
 	);
 
 	const toggleMobileMenu = () => {
 		setIsMobileMenuOpen((prev) => !prev);
 	};
+
+	// Bu log, her render'da role ve link sayısını gösterir
+	console.log(
+		'TopNavbar Rendering - Role:',
+		role,
+		'Loading:',
+		loading,
+		'FilteredLinks Count:',
+		filteredLinks.length
+	);
 
 	return (
 		<header className="bg-background border-b border-border px-4 py-3 sticky top-0 z-50">
@@ -143,19 +170,23 @@ export function TopNavbar() {
 						)}
 					</button>
 					<div className="text-lg font-semibold">
-						<Link href={role ? '/dashboard' : '/'}>Pizza Yönetim</Link>{' '}
-						{/* Giriş yapılmadıysa ana sayfa */}
+						<Link href={role && role !== 'user' ? '/dashboard' : '/'}>
+							Pizza Yönetim
+						</Link>
 					</div>
 				</div>
 
 				<nav className="hidden lg:flex items-center space-x-1">
-					{filteredLinks.map((link) => (
-						<Link key={link.href} href={link.href} passHref legacyBehavior>
-							<Button asChild variant="ghost" className="text-sm">
-								<a>{link.label}</a>
-							</Button>
-						</Link>
-					))}
+					{/* Sadece loading false ve rol varsa linkleri göster */}
+					{!loading &&
+						role &&
+						filteredLinks.map((link) => (
+							<Link key={link.href} href={link.href} passHref legacyBehavior>
+								<Button asChild variant="ghost" className="text-sm">
+									<a>{link.label}</a>
+								</Button>
+							</Link>
+						))}
 				</nav>
 
 				<div className="flex items-center space-x-2 sm:space-x-4">
@@ -174,23 +205,26 @@ export function TopNavbar() {
 						className="lg:hidden overflow-hidden border-t border-border"
 					>
 						<div className="flex flex-col space-y-1 px-2 pt-2 pb-3">
-							{filteredLinks.map((link) => (
-								<Link
-									key={link.href}
-									href={link.href}
-									passHref
-									legacyBehavior
-									onClick={() => setIsMobileMenuOpen(false)}
-								>
-									<Button
-										asChild
-										variant="ghost"
-										className="w-full justify-start text-base py-3"
+							{/* Sadece loading false ve rol varsa linkleri göster */}
+							{!loading &&
+								role &&
+								filteredLinks.map((link) => (
+									<Link
+										key={link.href}
+										href={link.href}
+										passHref
+										legacyBehavior
+										onClick={() => setIsMobileMenuOpen(false)}
 									>
-										<a>{link.label}</a>
-									</Button>
-								</Link>
-							))}
+										<Button
+											asChild
+											variant="ghost"
+											className="w-full justify-start text-base py-3"
+										>
+											<a>{link.label}</a>
+										</Button>
+									</Link>
+								))}
 						</div>
 					</motion.nav>
 				)}

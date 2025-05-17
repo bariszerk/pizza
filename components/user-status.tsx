@@ -12,12 +12,10 @@ import { createClient } from '@/utils/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { LogOutIcon, SettingsIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 export function UserStatus() {
 	const [session, setSession] = useState<Session | null>(null);
-	const router = useRouter();
 
 	const supabase = createClient();
 
@@ -38,12 +36,12 @@ export function UserStatus() {
 	}, [supabase.auth]);
 
 	async function handleLogout() {
-		const res = await fetch('/logout', { method: 'POST' });
-		if (res.ok) {
-			// Force the client state to refresh
-			setSession(null);
-			// Redirect to the login page
-			router.push('/login');
+		const { error } = await supabase.auth.signOut();
+		if (error) {
+			console.error(
+				'UserStatus: Direct client-side signOut error:',
+				error.message
+			);
 		}
 	}
 
