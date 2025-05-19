@@ -144,16 +144,6 @@ export function TopNavbar() {
 		setIsMobileMenuOpen((prev) => !prev);
 	};
 
-	// Bu log, her render'da role ve link sayısını gösterir
-	console.log(
-		'TopNavbar Rendering - Role:',
-		role,
-		'Loading:',
-		loading,
-		'FilteredLinks Count:',
-		filteredLinks.length
-	);
-
 	return (
 		<header className="bg-background border-b border-border px-4 py-3 sticky top-0 z-50">
 			<div className="container mx-auto flex items-center justify-between">
