@@ -1,7 +1,3 @@
-- dashboard
-    - date picker olması lazım.
-    - bir gün içinde gerçekleşen para harcaması ve kasaya giren para gösterilecek
-
 ## Elif
 - şube sayfası -> (örn. adana) yetkili şube çalışanı bu sayfaya erişebilecek ve bu sayfadan günlük veri girişi yapacak
     - sayfada takvim olacak default olarak bugün seçilecek
@@ -11,9 +7,14 @@
         - chatgptye sorup öneri alabilirsin.
 
 ## Barış
-- login ve sign up sayfası yapılacak.
-    - ilk etapta hesabı askıda bulunacak
-    - sonra biz bu kişiye yetki vereceğiz.
-    - şube yetkilisi ise direkt "/branch/[id]"
-
-    - change log tutmakta fayda var geçmişe yönelik değişikliklerde
+- takvim türkçeleştirilecek
+- küçük barların üzerine geldiğinde daha detaylı gösterilecek
+- dolardan tlye geçiş
+- rolü user olarak güncellenecek açıklamasını değiştirelim
+- işlemler kısmı eğer yöneticiyse gözükmesin
+- tarihler ikili ikili atlıyor 18 20 22 gibisinden gidiyor.
+- tarihler test edilecek
+- light-dark türkçeleştirilecek
+- profil işareti eklenecek
+- branch financial summary yazıyor türkçeleştir.
+- şubem sayfasını tamamını türkçeleştir.
