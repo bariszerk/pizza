@@ -2,7 +2,7 @@
 'use client';
 
 import {
-	endOfDay, // Eklendi
+	endOfDay,
 	endOfMonth,
 	endOfWeek,
 	format,
@@ -40,9 +40,9 @@ interface EnhancedDateRangePickerProps
 	onDateChange: (data: {
 		range: DateRange | undefined;
 		preset: string | undefined;
-	}) => void; // Güncellendi
+	}) => void;
 	initialDateRange?: DateRange;
-	initialPresetValue?: string; // Yeni prop
+	initialPresetValue?: string;
 	className?: string;
 }
 
@@ -52,11 +52,7 @@ export type Preset = {
 	getDateRange: () => DateRange;
 };
 
-// PRESETS ve getDefaultPresetValue DashboardPage'e taşındığı için buradan kaldırılabilir veya ortak yerden import edilebilir.
-// Şimdilik burada bırakıyorum, ancak ideal olanı tek bir yerden yönetmek.
-// Eğer DashboardPage'den prop olarak almıyorsanız, burada tanımlı olmalı.
 export const PRESETS_LOCAL: Preset[] = [
-	// Farklı isimle tanımlayalım, karışmasın
 	{
 		label: 'Bugün',
 		value: 'today',
@@ -135,30 +131,46 @@ export const PRESETS_LOCAL: Preset[] = [
 	{
 		label: 'Özel Aralık...',
 		value: 'custom',
-		getDateRange: () => ({ from: new Date(), to: new Date() }),
+		getDateRange: () => ({ from: new Date(), to: new Date() }), // Varsayılan özel aralık için
 	},
 ];
 
 export const getDefaultPresetValueLocal = (range?: DateRange): string => {
-	if (!range || !range.from || !range.to) return 'last_7_days';
-	// range.from ve range.to'nun Date objesi ve geçerli olduğundan emin olalım
+	if (!range || !range.from || !range.to) {
+		return 'last_7_days'; // Veya uygun bir varsayılan
+	}
+
+	const fromDate = range.from;
+	const toDate = range.to;
+
 	if (
-		!(range.from instanceof Date) ||
-		!isValid(range.from) ||
-		!(range.to instanceof Date) ||
-		!isValid(range.to)
+		!(fromDate instanceof Date) ||
+		!isValid(fromDate) ||
+		!(toDate instanceof Date) ||
+		!isValid(toDate)
 	) {
 		return 'custom';
 	}
 
 	for (const preset of PRESETS_LOCAL) {
 		if (preset.value === 'custom') continue;
-		const presetRange = preset.getDateRange(); // Bu her zaman { from: Date, to: Date } döndürmeli
+
+		const presetRange = preset.getDateRange();
+		const presetFrom = presetRange.from;
+		const presetTo = presetRange.to;
+
 		if (
-			isSameDay(range.from, presetRange.from) &&
-			isSameDay(range.to, presetRange.to)
+			presetFrom && // Kontrol et
+			presetTo && // Kontrol et
+			presetFrom instanceof Date && // Tipini doğrula
+			isValid(presetFrom) && // Geçerliliğini doğrula
+			presetTo instanceof Date && // Tipini doğrula
+			isValid(presetTo) // Geçerliliğini doğrula
 		) {
-			return preset.value;
+			// fromDate ve toDate zaten yukarıda Date ve isValid olarak doğrulandı.
+			if (isSameDay(fromDate, presetFrom) && isSameDay(toDate, presetTo)) {
+				return preset.value;
+			}
 		}
 	}
 	return 'custom';
@@ -168,7 +180,7 @@ export function EnhancedDateRangePicker({
 	className,
 	onDateChange,
 	initialDateRange,
-	initialPresetValue, // Yeni prop
+	initialPresetValue,
 }: EnhancedDateRangePickerProps) {
 	const [selectedPreset, setSelectedPreset] = React.useState<string>(
 		initialPresetValue || getDefaultPresetValueLocal(initialDateRange)
@@ -181,12 +193,31 @@ export function EnhancedDateRangePicker({
 			initialPresetValue || getDefaultPresetValueLocal(initialDateRange);
 		const foundPreset = PRESETS_LOCAL.find((p) => p.value === presetValue);
 		if (presetValue !== 'custom' && foundPreset) {
-			return foundPreset.getDateRange();
+			const range = foundPreset.getDateRange();
+			// getDateRange'den dönen değerlerin Date olduğundan emin olalım
+			if (range.from && range.to && isValid(range.from) && isValid(range.to)) {
+				return { from: startOfDay(range.from), to: endOfDay(range.to) };
+			}
 		}
-		return (
-			initialDateRange ||
-			PRESETS_LOCAL.find((p) => p.value === 'last_7_days')!.getDateRange()
-		);
+		if (
+			initialDateRange?.from &&
+			initialDateRange?.to &&
+			isValid(initialDateRange.from) &&
+			isValid(initialDateRange.to)
+		) {
+			return {
+				from: startOfDay(initialDateRange.from),
+				to: endOfDay(initialDateRange.to),
+			};
+		}
+		const defaultPreset = PRESETS_LOCAL.find((p) => p.value === 'last_7_days');
+		if (defaultPreset) {
+			const range = defaultPreset.getDateRange();
+			if (range.from && range.to && isValid(range.from) && isValid(range.to)) {
+				return { from: startOfDay(range.from), to: endOfDay(range.to) };
+			}
+		}
+		return undefined; // Veya uygun bir varsayılan
 	});
 
 	const [pendingCustomDate, setPendingCustomDate] = React.useState<
@@ -194,7 +225,6 @@ export function EnhancedDateRangePicker({
 	>(currentAppliedDate);
 	const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
 
-	// Dışarıdan gelen initial props değişirse state'leri güncelle
 	React.useEffect(() => {
 		const newPresetValue =
 			initialPresetValue || getDefaultPresetValueLocal(initialDateRange);
@@ -203,9 +233,30 @@ export function EnhancedDateRangePicker({
 		let newRangeToApply: DateRange | undefined;
 		if (newPresetValue !== 'custom') {
 			const preset = PRESETS_LOCAL.find((p) => p.value === newPresetValue);
-			newRangeToApply = preset?.getDateRange();
-		} else {
-			newRangeToApply = initialDateRange;
+			if (preset) {
+				const range = preset.getDateRange();
+				if (
+					range.from &&
+					range.to &&
+					isValid(range.from) &&
+					isValid(range.to)
+				) {
+					newRangeToApply = {
+						from: startOfDay(range.from),
+						to: endOfDay(range.to),
+					};
+				}
+			}
+		} else if (
+			initialDateRange?.from &&
+			initialDateRange?.to &&
+			isValid(initialDateRange.from) &&
+			isValid(initialDateRange.to)
+		) {
+			newRangeToApply = {
+				from: startOfDay(initialDateRange.from),
+				to: endOfDay(initialDateRange.to),
+			};
 		}
 
 		if (newRangeToApply) {
@@ -217,18 +268,48 @@ export function EnhancedDateRangePicker({
 	const handlePresetChange = (presetValue: string) => {
 		setSelectedPreset(presetValue);
 		if (presetValue === 'custom') {
-			setPendingCustomDate(
+			const currentOrToday =
 				currentAppliedDate ||
-					PRESETS_LOCAL.find((p) => p.value === 'today')!.getDateRange()
-			);
+				PRESETS_LOCAL.find((p) => p.value === 'today')?.getDateRange();
+			if (
+				currentOrToday?.from &&
+				currentOrToday?.to &&
+				isValid(currentOrToday.from) &&
+				isValid(currentOrToday.to)
+			) {
+				setPendingCustomDate({
+					from: startOfDay(currentOrToday.from),
+					to: endOfDay(currentOrToday.to),
+				});
+			} else {
+				// Fallback
+				const todayRange = PRESETS_LOCAL.find(
+					(p) => p.value === 'today'
+				)!.getDateRange();
+				setPendingCustomDate({
+					from: startOfDay(todayRange.from!),
+					to: endOfDay(todayRange.to!),
+				});
+			}
 			setIsPopoverOpen(true);
 		} else {
 			const preset = PRESETS_LOCAL.find((p) => p.value === presetValue);
 			if (preset) {
-				const newRange = preset.getDateRange();
-				setCurrentAppliedDate(newRange);
-				setPendingCustomDate(newRange);
-				onDateChange({ range: newRange, preset: presetValue }); // preset bilgisini de gönder
+				const newRangeRaw = preset.getDateRange();
+				if (
+					newRangeRaw.from &&
+					newRangeRaw.to &&
+					isValid(newRangeRaw.from) &&
+					isValid(newRangeRaw.to)
+				) {
+					const newRange = {
+						from: startOfDay(newRangeRaw.from),
+						to: endOfDay(newRangeRaw.to),
+					};
+					setCurrentAppliedDate(newRange);
+					setPendingCustomDate(newRange);
+					onDateChange({ range: newRange, preset: presetValue });
+				}
 				setIsPopoverOpen(false);
 			}
 		}
@@ -240,12 +321,12 @@ export function EnhancedDateRangePicker({
 			const to =
 				pendingCustomDate.to && isValid(pendingCustomDate.to)
 					? endOfDay(pendingCustomDate.to)
-					: endOfDay(from); // Eğer to yoksa veya geçersizse from ile aynı gün sonu
+					: endOfDay(from);
 
-			const newAppliedRange = { from, to: to < from ? from : to }; // to, from'dan önce olamaz
+			const newAppliedRange = { from, to: to < from ? from : to };
 
 			setCurrentAppliedDate(newAppliedRange);
-			onDateChange({ range: newAppliedRange, preset: 'custom' }); // preset "custom" olarak gönder
+			onDateChange({ range: newAppliedRange, preset: 'custom' });
 			setSelectedPreset('custom');
 		}
 		setIsPopoverOpen(false);
@@ -254,15 +335,34 @@ export function EnhancedDateRangePicker({
 	const handlePopoverOpenChange = (open: boolean) => {
 		setIsPopoverOpen(open);
 		if (open) {
-			setPendingCustomDate(currentAppliedDate);
+			if (
+				currentAppliedDate?.from &&
+				currentAppliedDate?.to &&
+				isValid(currentAppliedDate.from) &&
+				isValid(currentAppliedDate.to)
+			) {
+				setPendingCustomDate({
+					from: startOfDay(currentAppliedDate.from),
+					to: endOfDay(currentAppliedDate.to),
+				});
+			}
 		} else {
-			// Dışarı tıklayarak kapanırsa, seçili preset'i currentAppliedDate'e göre ayarla
 			const newPresetValueBasedOnApplied =
 				getDefaultPresetValueLocal(currentAppliedDate);
 			if (selectedPreset !== newPresetValueBasedOnApplied) {
 				setSelectedPreset(newPresetValueBasedOnApplied);
 			}
-			setPendingCustomDate(currentAppliedDate); // Pending'i de geri al
+			if (
+				currentAppliedDate?.from &&
+				currentAppliedDate?.to &&
+				isValid(currentAppliedDate.from) &&
+				isValid(currentAppliedDate.to)
+			) {
+				setPendingCustomDate({
+					from: startOfDay(currentAppliedDate.from),
+					to: endOfDay(currentAppliedDate.to),
+				});
+			}
 		}
 	};
 
@@ -270,36 +370,43 @@ export function EnhancedDateRangePicker({
 		if (!currentAppliedDate?.from || !isValid(currentAppliedDate.from))
 			return 'Tarih Seçin';
 
+		const currentFrom = startOfDay(currentAppliedDate.from); // Normalleştir
+
 		const currentPresetObj = PRESETS_LOCAL.find(
 			(p) => p.value === selectedPreset
 		);
-		// Eğer seçili preset "custom" değilse ve currentAppliedDate bu preset ile eşleşiyorsa preset label'ını kullan
+
 		if (selectedPreset !== 'custom' && currentPresetObj) {
 			const presetRange = currentPresetObj.getDateRange();
 			if (
-				currentAppliedDate.to &&
-				isValid(currentAppliedDate.to) &&
 				presetRange.from &&
-				isValid(presetRange.from) &&
-				isSameDay(
-					startOfDay(currentAppliedDate.from),
-					startOfDay(presetRange.from)
-				) && // Başlangıçları karşılaştır
 				presetRange.to &&
-				isValid(presetRange.to) &&
-				isSameDay(endOfDay(currentAppliedDate.to), endOfDay(presetRange.to))
+				isValid(presetRange.from) &&
+				isValid(presetRange.to)
 			) {
-				// Bitişleri karşılaştır
-				return currentPresetObj.label;
+				const presetFrom = startOfDay(presetRange.from); // Normalleştir
+				const presetTo = endOfDay(presetRange.to); // Normalleştir
+
+				if (currentAppliedDate.to && isValid(currentAppliedDate.to)) {
+					const currentTo = endOfDay(currentAppliedDate.to); // Normalleştir
+					if (
+						isSameDay(currentFrom, presetFrom) &&
+						isSameDay(currentTo, presetTo)
+					) {
+						return currentPresetObj.label;
+					}
+				}
 			}
 		}
 
 		const { from, to } = currentAppliedDate;
-		// `to` undefined veya from ile aynı gün olabilir
-		if (to && isValid(to) && !isSameDay(from, to)) {
-			return `${format(from, 'LLL dd, y')} - ${format(to, 'LLL dd, y')}`;
+		if (from && isValid(from)) {
+			if (to && isValid(to) && !isSameDay(from, to)) {
+				return `${format(from, 'LLL dd, y')} - ${format(to, 'LLL dd, y')}`;
+			}
+			return format(from, 'LLL dd, y');
 		}
-		return format(from, 'LLL dd, y'); // Tek gün veya 'to' tanımsızsa
+		return 'Tarih Seçin'; // Fallback
 	}, [currentAppliedDate, selectedPreset]);
 
 	return (
@@ -328,10 +435,28 @@ export function EnhancedDateRangePicker({
 						)}
 						onClick={() => {
 							setSelectedPreset('custom');
-							setPendingCustomDate(
+							const currentOrToday =
 								currentAppliedDate ||
-									PRESETS_LOCAL.find((p) => p.value === 'today')!.getDateRange()
-							);
+								PRESETS_LOCAL.find((p) => p.value === 'today')?.getDateRange();
+							if (
+								currentOrToday?.from &&
+								currentOrToday?.to &&
+								isValid(currentOrToday.from) &&
+								isValid(currentOrToday.to)
+							) {
+								setPendingCustomDate({
+									from: startOfDay(currentOrToday.from),
+									to: endOfDay(currentOrToday.to),
+								});
+							} else {
+								const todayRange = PRESETS_LOCAL.find(
+									(p) => p.value === 'today'
+								)!.getDateRange();
+								setPendingCustomDate({
+									from: startOfDay(todayRange.from!),
+									to: endOfDay(todayRange.to!),
+								});
+							}
 							setIsPopoverOpen(true);
 						}}
 						aria-label="Özel tarih aralığı seç"
@@ -339,7 +464,7 @@ export function EnhancedDateRangePicker({
 						<CalendarIcon className="h-4 w-4" />
 					</Button>
 				</PopoverTrigger>
-				{isPopoverOpen && ( // selectedPreset === "custom" kontrolünü kaldırdım, popover'ın açılıp kapanmasını sadece isPopoverOpen yönetiyor
+				{isPopoverOpen && (
 					<PopoverContent className="w-auto p-0" align="start">
 						<Calendar
 							initialFocus
@@ -350,9 +475,20 @@ export function EnhancedDateRangePicker({
 									: new Date()
 							}
 							selected={pendingCustomDate}
-							onSelect={setPendingCustomDate}
+							onSelect={(newRange) => {
+								if (newRange?.from && isValid(newRange.from)) {
+									const from = startOfDay(newRange.from);
+									const to =
+										newRange.to && isValid(newRange.to)
+											? endOfDay(newRange.to)
+											: undefined; // `to` tanımsız olabilir
+									setPendingCustomDate({ from, to });
+								} else {
+									setPendingCustomDate(newRange); // veya undefined/null
+								}
+							}}
 							numberOfMonths={2}
-							disabled={{ after: new Date() }}
+							disabled={{ after: endOfDay(new Date()) }} // Bugünün sonundan sonrasını devre dışı bırak
 						/>
 						<Separator className="my-2" />
 						<div className="flex justify-end gap-2 p-3 pt-0">
@@ -364,7 +500,17 @@ export function EnhancedDateRangePicker({
 									const prevPreset =
 										getDefaultPresetValueLocal(currentAppliedDate);
 									setSelectedPreset(prevPreset);
-									setPendingCustomDate(currentAppliedDate);
+									if (
+										currentAppliedDate?.from &&
+										currentAppliedDate?.to &&
+										isValid(currentAppliedDate.from) &&
+										isValid(currentAppliedDate.to)
+									) {
+										setPendingCustomDate({
+											from: startOfDay(currentAppliedDate.from),
+											to: endOfDay(currentAppliedDate.to),
+										});
+									}
 								}}
 							>
 								Vazgeç
@@ -373,10 +519,9 @@ export function EnhancedDateRangePicker({
 								size="sm"
 								onClick={handleCustomDateApply}
 								disabled={
-									!pendingCustomDate?.from ||
-									!isValid(pendingCustomDate.from) ||
-									(pendingCustomDate.to !== undefined &&
-										!isValid(pendingCustomDate.to))
+									!pendingCustomDate?.from || !isValid(pendingCustomDate.from)
+									// `to` tanımsız olabilir, bu yüzden onun için bir disable koşulu eklemeyin
+									// Eğer `to` zorunluysa, `|| !pendingCustomDate.to || !isValid(pendingCustomDate.to)` eklenebilir
 								}
 							>
 								Uygula
