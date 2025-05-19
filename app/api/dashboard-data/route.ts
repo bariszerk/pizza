@@ -290,11 +290,11 @@ export async function GET(request: Request) {
 		totalExpenses,
 		totalNetProfit,
 		totalTransactions,
-		cardTitleTotalRevenue: `Toplam Kazanç (${selectedBranchName})`,
-		cardTitleTotalExpenses: `Toplam Gider (${selectedBranchName})`,
-		cardTitleTotalNetProfit: `Net Kâr (${selectedBranchName})`,
-		cardTitleTotalTransactions: `Toplam İşlem (${selectedBranchName})`,
-		cardTitleDataEntryStatus: `Bugünkü Veri Girişi (${selectedBranchName})`,
+		cardTitleTotalRevenue: `Toplam Kazanç`,
+		cardTitleTotalExpenses: `Toplam Gider`,
+		cardTitleTotalNetProfit: `Net Kâr`,
+		cardTitleTotalTransactions: `Toplam İşlem`,
+		cardTitleDataEntryStatus: `Bugünkü Veri Girişi`,
 		dataEntryStatusToday: dataEntryToday,
 		dailyBreakdown: typedFinancials, // Tüm finansal kayıtları gönder
 	};

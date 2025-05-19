@@ -678,12 +678,12 @@ function DashboardContent() {
 								initialPresetValue={currentPresetValue}
 								className="min-w-max"
 							/>
-							<Button
+							{/* <Button
 								onClick={() => alert('Rapor indirme özelliği yakında!')}
 								disabled={loading}
 							>
 								Rapor İndir
-							</Button>
+							</Button> */}
 						</div>
 					</div>
 
@@ -695,7 +695,9 @@ function DashboardContent() {
 										<CardTitle className="text-sm font-medium">
 											{cardTitleTotalRevenue}
 										</CardTitle>
-										<DollarSign className="h-4 w-4 text-muted-foreground" />
+										<span className="h-4 w-4 text-muted-foreground flex items-center justify-center text-lg">
+											₺
+										</span>{' '}
 									</CardHeader>
 									<CardContent>
 										<div className="text-2xl font-bold">
