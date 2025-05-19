@@ -8,28 +8,28 @@ import {
 	parseISO,
 	startOfDay,
 } from 'date-fns';
-import { tr } from 'date-fns/locale'; // Türkçe locale eklendi
+import { tr } from 'date-fns/locale';
 import { NextResponse } from 'next/server';
 import { type DateRange } from 'react-day-picker';
 
-// Tipler
 type FinancialRecord = {
 	id: string;
 	branch_id: string;
 	expenses: number;
 	earnings: number;
 	summary: string;
-	date: string;
+	date: string; // "yyyy-MM-dd"
 };
 
 type FinancialData = FinancialRecord & {
 	branch_name?: string;
 };
 
-type OverviewChartData = {
+type OverviewChartDataPoint = {
 	name: string; // Gün formatı (örn: 19 May)
+	originalDate: string; // "yyyy-MM-dd" formatında tıklama için
 	kazanc: number;
-	netKar: number; // Net kar eklendi
+	netKar: number;
 };
 
 type BranchInfo = {
@@ -40,20 +40,19 @@ type BranchInfo = {
 type DashboardApiResponse = {
 	userRole: string | null;
 	availableBranches: BranchInfo[];
-	selectedBranchId?: string | null;
-	overviewData: OverviewChartData[];
+	selectedBranchId?: string | null; // Seçili şube ID'si
+	overviewData: OverviewChartDataPoint[];
 	totalRevenue: number;
 	totalExpenses: number;
 	totalNetProfit: number;
 	totalTransactions: number;
-	// activeNowCount kaldırıldı, yerine dataEntryStatusToday kullanılacak
 	cardTitleTotalRevenue: string;
 	cardTitleTotalExpenses: string;
 	cardTitleTotalNetProfit: string;
 	cardTitleTotalTransactions: string;
-	cardTitleDataEntryStatus: string; // Yeni başlık
-	dataEntryStatusToday: boolean; // Bugün veri girildi mi?
-	dailyBreakdown?: any | null; // Bu alanın detaylı yapısı netleşince güncellenebilir
+	cardTitleDataEntryStatus: string;
+	dataEntryStatusToday: boolean;
+	dailyBreakdown: FinancialRecord[] | null; // Grafik tıklaması için tüm finansal kayıtlar
 };
 
 export async function GET(request: Request) {
@@ -61,25 +60,7 @@ export async function GET(request: Request) {
 	const { searchParams } = new URL(request.url);
 	const fromParam = searchParams.get('from');
 	const toParam = searchParams.get('to');
-	let branchIdParam = searchParams.get('branch');
-
-	let dateRange: DateRange | undefined = undefined;
-
-	if (fromParam && isValid(parseISO(fromParam))) {
-		const fromDate = startOfDay(parseISO(fromParam));
-		let toDate;
-		if (toParam && isValid(parseISO(toParam))) {
-			toDate = endOfDay(parseISO(toParam));
-		} else {
-			toDate = endOfDay(fromDate);
-		}
-		dateRange = { from: fromDate, to: toDate };
-	} else {
-		return NextResponse.json(
-			{ error: "Geçerli 'from' tarihi gereklidir." },
-			{ status: 400 }
-		);
-	}
+	const branchIdParam = searchParams.get('branch'); // Bu artık tek bir ID veya null olmalı
 
 	const {
 		data: { user },
@@ -100,10 +81,6 @@ export async function GET(request: Request) {
 		.single();
 
 	if (profileError || !profile) {
-		console.error(
-			'API/dashboard-data: Profil bulunamadı:',
-			profileError?.message
-		);
 		return NextResponse.json(
 			{ error: 'Profil bulunamadı veya yetki hatası.' },
 			{ status: 403 }
@@ -111,8 +88,12 @@ export async function GET(request: Request) {
 	}
 
 	const userRole = profile.role;
-	let accessibleBranchIds: string[] | null = null;
-	let availableBranchesForSelect: BranchInfo[] = [];
+	if (userRole !== 'admin' && userRole !== 'manager') {
+		return NextResponse.json(
+			{ error: 'Bu verilere erişim yetkiniz yok (rol).' },
+			{ status: 403 }
+		);
+	}
 
 	const { data: allBranchesData, error: allBranchesError } = await supabase
 		.from('branches')
@@ -127,8 +108,12 @@ export async function GET(request: Request) {
 	}
 	const branchMap = new Map(allBranchesData.map((b) => [b.id, b.name]));
 
+	let availableBranchesForSelect: BranchInfo[] = [];
+	let accessibleBranchIdsForQuery: string[] = [];
+
 	if (userRole === 'admin') {
 		availableBranchesForSelect = allBranchesData;
+		accessibleBranchIdsForQuery = allBranchesData.map((b) => b.id);
 	} else if (userRole === 'manager') {
 		const { data: assignments, error: assignmentsError } = await supabase
 			.from('manager_branch_assignments')
@@ -141,70 +126,95 @@ export async function GET(request: Request) {
 				{ status: 500 }
 			);
 		}
-		accessibleBranchIds = assignments.map((a) => a.branch_id);
+		const assignedIds = assignments.map((a) => a.branch_id);
 		availableBranchesForSelect = allBranchesData.filter((b) =>
-			accessibleBranchIds!.includes(b.id)
+			assignedIds.includes(b.id)
 		);
-		if (accessibleBranchIds.length === 0) {
+		accessibleBranchIdsForQuery = assignedIds;
+
+		if (availableBranchesForSelect.length === 0) {
+			// Yöneticiye atanmış şube yoksa, temel bilgileri ve boş veri setlerini döndür
 			return NextResponse.json({
 				userRole,
 				availableBranches: [],
-				selectedBranchId: branchIdParam,
+				selectedBranchId: null,
 				overviewData: [],
 				totalRevenue: 0,
 				totalExpenses: 0,
 				totalNetProfit: 0,
 				totalTransactions: 0,
-				cardTitleTotalRevenue: 'Toplam Kazanç (Atanmış Şube Yok)',
-				cardTitleTotalExpenses: 'Toplam Gider (Atanmış Şube Yok)',
-				cardTitleTotalNetProfit: 'Net Kar (Atanmış Şube Yok)',
-				cardTitleTotalTransactions: 'Toplam İşlem (Atanmış Şube Yok)',
-				cardTitleDataEntryStatus: 'Bugünkü Veri Girişi (Atanmış Şube Yok)',
+				cardTitleTotalRevenue: 'Toplam Kazanç',
+				cardTitleTotalExpenses: 'Toplam Gider',
+				cardTitleTotalNetProfit: 'Net Kar',
+				cardTitleTotalTransactions: 'Toplam İşlem',
+				cardTitleDataEntryStatus: 'Bugünkü Veri Girişi',
 				dataEntryStatusToday: false,
-				dailyBreakdown: null,
+				dailyBreakdown: [],
 			} as DashboardApiResponse);
 		}
-	} else if (userRole === 'branch_staff') {
-		if (profile.staff_branch_id) {
-			accessibleBranchIds = [profile.staff_branch_id];
-			availableBranchesForSelect = allBranchesData.filter(
-				(b) => b.id === profile.staff_branch_id
-			);
-			if (
-				!branchIdParam ||
-				branchIdParam === 'all' ||
-				branchIdParam === 'all_assigned'
-			)
-				branchIdParam = profile.staff_branch_id;
-		} else {
-			return NextResponse.json({
-				userRole,
-				availableBranches: [],
-				selectedBranchId: branchIdParam,
-				overviewData: [],
-				totalRevenue: 0,
-				totalExpenses: 0,
-				totalNetProfit: 0,
-				totalTransactions: 0,
-				cardTitleTotalRevenue: 'Toplam Kazanç (Şube Atanmamış)',
-				cardTitleTotalExpenses: 'Toplam Gider (Şube Atanmamış)',
-				cardTitleTotalNetProfit: 'Net Kar (Şube Atanmamış)',
-				cardTitleTotalTransactions: 'Toplam İşlem (Şube Atanmamış)',
-				cardTitleDataEntryStatus: 'Bugünkü Veri Girişi (Şube Atanmamış)',
-				dataEntryStatusToday: false,
-				dailyBreakdown: null,
-			} as DashboardApiResponse);
-		}
+	}
+
+	// Eğer branchIdParam gelmediyse (ilk yükleme, şube seçimi için)
+	// sadece kullanıcı rolünü ve erişilebilir şubeleri döndür
+	if (!branchIdParam) {
+		return NextResponse.json({
+			userRole,
+			availableBranches: availableBranchesForSelect,
+			selectedBranchId: null,
+			// Diğer alanlar null veya boş olarak ayarlanabilir
+			overviewData: [],
+			totalRevenue: 0,
+			totalExpenses: 0,
+			totalNetProfit: 0,
+			totalTransactions: 0,
+			cardTitleTotalRevenue: 'Toplam Kazanç',
+			cardTitleTotalExpenses: 'Toplam Gider',
+			cardTitleTotalNetProfit: 'Net Kar',
+			cardTitleTotalTransactions: 'Toplam İşlem',
+			cardTitleDataEntryStatus: 'Bugünkü Veri Girişi',
+			dataEntryStatusToday: false,
+			dailyBreakdown: [],
+		} as DashboardApiResponse);
+	}
+
+	// branchIdParam artık 'all' veya 'all_assigned' olmamalı.
+	// Eğer gelirse, bu bir hata durumudur veya eski bir URL'dir.
+	if (branchIdParam === 'all' || branchIdParam === 'all_assigned') {
+		return NextResponse.json(
+			{ error: 'Geçersiz şube seçimi. Lütfen belirli bir şube seçin.' },
+			{ status: 400 }
+		);
+	}
+
+	// Kullanıcının seçilen şubeye erişimi var mı kontrol et
+	if (!accessibleBranchIdsForQuery.includes(branchIdParam)) {
+		return NextResponse.json(
+			{ error: 'Bu şubeye erişim yetkiniz yok.' },
+			{ status: 403 }
+		);
+	}
+
+	let dateRange: DateRange | undefined = undefined;
+	if (fromParam && isValid(parseISO(fromParam))) {
+		const fromDate = startOfDay(parseISO(fromParam));
+		const toDate =
+			toParam && isValid(parseISO(toParam))
+				? endOfDay(parseISO(toParam))
+				: endOfDay(fromDate);
+		dateRange = { from: fromDate, to: toDate };
 	} else {
 		return NextResponse.json(
-			{ error: 'Bu verilere erişim yetkiniz yok.' },
-			{ status: 403 }
+			{ error: "Geçerli 'from' tarihi gereklidir." },
+			{ status: 400 }
 		);
 	}
 
 	let financialQueryBuilder = supabase
 		.from('branch_financials')
-		.select<string, FinancialRecord>('*');
+		.select<string, FinancialRecord>(
+			'id, branch_id, expenses, earnings, summary, date'
+		) // branch_name'i ayrıca ekleyeceğiz
+		.eq('branch_id', branchIdParam); // Sadece seçili şubenin verileri
 
 	if (dateRange?.from) {
 		financialQueryBuilder = financialQueryBuilder.gte(
@@ -219,77 +229,20 @@ export async function GET(request: Request) {
 		);
 	}
 
-	let effectiveBranchIdsForQuery: string[] = [];
-
-	if (
-		branchIdParam &&
-		branchIdParam !== 'all' &&
-		branchIdParam !== 'all_assigned'
-	) {
-		if (
-			userRole === 'admin' ||
-			(accessibleBranchIds && accessibleBranchIds.includes(branchIdParam))
-		) {
-			effectiveBranchIdsForQuery = [branchIdParam];
-			financialQueryBuilder = financialQueryBuilder.eq(
-				'branch_id',
-				branchIdParam
-			);
-		} else {
-			return NextResponse.json(
-				{ error: 'Bu şubeye erişim yetkiniz yok.' },
-				{ status: 403 }
-			);
-		}
-	} else {
-		// 'all' or 'all_assigned'
-		if (userRole === 'admin') {
-			effectiveBranchIdsForQuery = allBranchesData.map((b) => b.id);
-			// Admin tüm şubeleri görebilir, ek filtreye gerek yok (date filter yeterli)
-		} else if (userRole === 'manager' || userRole === 'branch_staff') {
-			if (accessibleBranchIds && accessibleBranchIds.length > 0) {
-				effectiveBranchIdsForQuery = accessibleBranchIds;
-				financialQueryBuilder = financialQueryBuilder.in(
-					'branch_id',
-					accessibleBranchIds
-				);
-			} else {
-				// Yetkili şubesi yoksa boş veri döner (yukarıdaki guard'lar tarafından yakalanmalıydı)
-				// Güvenlik için tekrar kontrol edip boş yanıt döndürebiliriz.
-				return NextResponse.json({
-					userRole,
-					availableBranches: [],
-					selectedBranchId: branchIdParam,
-					overviewData: [],
-					totalRevenue: 0,
-					totalExpenses: 0,
-					totalNetProfit: 0,
-					totalTransactions: 0,
-					cardTitleTotalRevenue: 'Toplam Kazanç (Yetkili Şube Yok)',
-					cardTitleTotalExpenses: 'Toplam Gider (Yetkili Şube Yok)',
-					cardTitleTotalNetProfit: 'Net Kar (Yetkili Şube Yok)',
-					cardTitleTotalTransactions: 'Toplam İşlem (Yetkili Şube Yok)',
-					cardTitleDataEntryStatus: 'Bugünkü Veri Girişi (Yetkili Şube Yok)',
-					dataEntryStatusToday: false,
-					dailyBreakdown: null,
-				} as DashboardApiResponse);
-			}
-		}
-	}
-
 	const { data: financials, error: financialsError } =
-		await financialQueryBuilder.order('date', { ascending: false });
+		await financialQueryBuilder.order('date', { ascending: true }); // Grafikte doğru sıralama için ascending
 
 	if (financialsError) {
 		return NextResponse.json(
-			{ error: 'Finansal veriler alınamadı.' },
+			{ error: 'Finansal veriler alınamadı: ' + financialsError.message },
 			{ status: 500 }
 		);
 	}
 
+	const selectedBranchName = branchMap.get(branchIdParam) || branchIdParam;
 	const typedFinancials: FinancialData[] = (financials || []).map((f) => ({
 		...f,
-		branch_name: branchMap.get(f.branch_id) || f.branch_id,
+		branch_name: selectedBranchName, // Her kayda seçili şubenin adını ekle
 	}));
 
 	let totalRevenue = 0;
@@ -301,7 +254,7 @@ export async function GET(request: Request) {
 	const totalNetProfit = totalRevenue - totalExpenses;
 	const totalTransactions = typedFinancials.length;
 
-	const overviewData: OverviewChartData[] = [];
+	const overviewData: OverviewChartDataPoint[] = [];
 	if (dateRange.from && dateRange.to) {
 		const intervalDays = eachDayOfInterval({
 			start: dateRange.from,
@@ -315,8 +268,10 @@ export async function GET(request: Request) {
 			const dailyExpenses = typedFinancials
 				.filter((item) => item.date === dayStr)
 				.reduce((sum, item) => sum + item.expenses, 0);
+
 			overviewData.push({
-				name: format(day, 'dd MMM', { locale: tr }), // Türkçe format
+				name: format(day, 'dd MMM', { locale: tr }),
+				originalDate: dayStr, // Tıklama için orijinal tarihi sakla
 				kazanc: dailyEarnings,
 				netKar: dailyEarnings - dailyExpenses,
 			});
@@ -324,39 +279,24 @@ export async function GET(request: Request) {
 	}
 
 	const todayStr = format(new Date(), 'yyyy-MM-dd');
-	let dataEntryToday = false;
-	if (effectiveBranchIdsForQuery.length > 0) {
-		dataEntryToday = typedFinancials.some(
-			(f) =>
-				f.date === todayStr && effectiveBranchIdsForQuery.includes(f.branch_id)
-		);
-	} else {
-		// Eğer effectiveBranchIdsForQuery boşsa (örn. admin ve sistemde hiç şube yoksa)
-		dataEntryToday = false;
-	}
+	const dataEntryToday = typedFinancials.some((f) => f.date === todayStr);
 
 	const responsePayload: DashboardApiResponse = {
 		userRole,
 		availableBranches: availableBranchesForSelect,
-		selectedBranchId:
-			branchIdParam ||
-			(userRole === 'admin'
-				? 'all'
-				: accessibleBranchIds && accessibleBranchIds.length > 0
-				? 'all_assigned'
-				: null),
+		selectedBranchId: branchIdParam, // Artık her zaman tek bir ID olmalı
 		overviewData,
 		totalRevenue,
 		totalExpenses,
 		totalNetProfit,
 		totalTransactions,
-		cardTitleTotalRevenue: `Toplam Kazanç`,
-		cardTitleTotalExpenses: `Toplam Gider`,
-		cardTitleTotalNetProfit: `Net Kâr`,
-		cardTitleTotalTransactions: `Toplam İşlem`,
-		cardTitleDataEntryStatus: 'Bugünkü Veri Girişi',
+		cardTitleTotalRevenue: `Toplam Kazanç (${selectedBranchName})`,
+		cardTitleTotalExpenses: `Toplam Gider (${selectedBranchName})`,
+		cardTitleTotalNetProfit: `Net Kâr (${selectedBranchName})`,
+		cardTitleTotalTransactions: `Toplam İşlem (${selectedBranchName})`,
+		cardTitleDataEntryStatus: `Bugünkü Veri Girişi (${selectedBranchName})`,
 		dataEntryStatusToday: dataEntryToday,
-		dailyBreakdown: null,
+		dailyBreakdown: typedFinancials, // Tüm finansal kayıtları gönder
 	};
 
 	return NextResponse.json(responsePayload);

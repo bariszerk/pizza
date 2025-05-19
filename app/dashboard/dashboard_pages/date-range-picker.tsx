@@ -177,7 +177,7 @@ export const getDefaultPresetValueLocal = (range?: DateRange): string => {
 	return 'custom';
 };
 
-export function EnhancedDateRangePicker({
+export function DateRangePicker({
 	className,
 	onDateChange,
 	initialDateRange,
