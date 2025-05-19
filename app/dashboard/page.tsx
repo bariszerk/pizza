@@ -178,7 +178,6 @@ function DashboardContent() {
 			searchParams.get('preset') || getDefaultPresetValueLocal(initialRange);
 		const initialBranch = getInitialBranchId();
 
-		let needsStateUpdate = false;
 		if (
 			!selectedDateRange || // Henüz state set edilmemişse
 			(selectedDateRange.from &&
@@ -191,15 +190,12 @@ function DashboardContent() {
 			(!selectedDateRange.to && initialRange.to) // State'de to yok ama URL'de varsa
 		) {
 			setSelectedDateRange(initialRange);
-			needsStateUpdate = true;
 		}
 		if (currentPresetValue !== initialPreset) {
 			setCurrentPresetValue(initialPreset);
-			needsStateUpdate = true;
 		}
 		if (selectedBranchId !== initialBranch) {
 			setSelectedBranchId(initialBranch);
-			needsStateUpdate = true;
 		}
 		// Eğer state'ler URL ile senkronize değilse, state güncellemeleri zaten
 		// bir sonraki useEffect (veri çekme) bloğunu tetikleyecektir.
