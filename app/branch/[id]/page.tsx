@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createClient } from '@/utils/supabase/client';
 import { format, isBefore, isSameDay, startOfDay, subDays } from 'date-fns';
+import { tr } from 'date-fns/locale';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react'; // useMemo importu zaten vardı
@@ -166,7 +167,8 @@ export default function BranchPage() {
 				if (error) throw error;
 				toast.success('Veri başarıyla güncellendi!', {
 					description:
-						format(selectedDate, 'dd MMMM yyyy') + ' için kayıt işlendi.',
+						format(selectedDate, 'dd MMMM yyyy', { locale: tr }) +
+						' için kayıt işlendi.',
 				});
 			} else {
 				const { error, data: insertedData } = await supabase // data'yı alalım
@@ -177,7 +179,8 @@ export default function BranchPage() {
 				if (error) throw error;
 				toast.success('Veri başarıyla kaydedildi!', {
 					description:
-						format(selectedDate, 'dd MMMM yyyy') + ' için kayıt işlendi.',
+						format(selectedDate, 'dd MMMM yyyy', { locale: tr }) +
+						' için kayıt işlendi.',
 				});
 				setExpenses('');
 				setEarnings('');
@@ -245,7 +248,7 @@ export default function BranchPage() {
 								Şube Finansal Özeti
 							</CardTitle>
 							<p className="text-sm text-muted-foreground text-center">
-								{format(selectedDate, 'dd MMMM yyyy')}
+								{format(selectedDate, 'dd MMMM yyyy', { locale: tr })}
 							</p>
 						</CardHeader>
 						<CardContent className="p-6 md:p-8 space-y-6">

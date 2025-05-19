@@ -51,7 +51,6 @@ type Branch = {
 	assigned_staff?: UserProfile[];
 };
 
-
 type Profile = {
 	id: string;
 	first_name: string | null;
@@ -499,7 +498,7 @@ export default function AdminBranchesPage() {
 		if (!selectedBranchForStaffAssignment) return;
 		setConfirmDialogProps({
 			title: 'Personeli Şubeden Çıkar',
-			description: `Bu personeli "${selectedBranchForStaffAssignment.name}" şubesinden çıkarmak istediğinizden emin misiniz? Rolü "user" olarak güncellenecektir.`,
+			description: `Bu personeli "${selectedBranchForStaffAssignment.name}" şubesinden çıkarmak istediğinizden emin misiniz? Bu kişi artık sisteme günlük veriler giremeyecektir.`,
 			confirmText: 'Evet, Çıkar',
 			onConfirm: async () => {
 				setConfirmDialogOpen(false);

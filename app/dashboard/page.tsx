@@ -10,6 +10,8 @@ import {
 	startOfDay,
 	subDays,
 } from 'date-fns';
+import { tr } from 'date-fns/locale'; // Türkçe locale eklendi
+import { CheckCircle2, XCircle } from 'lucide-react'; // İkonlar eklendi
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { type DateRange } from 'react-day-picker';
@@ -24,7 +26,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent } from '@/components/ui/tabs'; // TabsList kaldırıldı, gerekirse geri eklenebilir.
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import {
 	EnhancedDateRangePicker,
 	PRESETS_LOCAL,
@@ -32,7 +34,6 @@ import {
 } from './dashboard_pages/date-range-picker';
 import { Overview } from './dashboard_pages/overview';
 
-// API Yanıt Tipi (route.ts ile aynı olmalı)
 type BranchInfo = {
 	id: string;
 	name: string;
@@ -40,7 +41,8 @@ type BranchInfo = {
 
 type OverviewChartData = {
 	name: string;
-	total: number;
+	kazanc: number;
+	netKar: number; // Net kar eklendi
 };
 
 type DashboardData = {
@@ -52,12 +54,12 @@ type DashboardData = {
 	totalExpenses: number;
 	totalNetProfit: number;
 	totalTransactions: number;
-	activeNowCount: number;
-	cardTitleTotalRevenue: string; // Örn: "Toplam Kazanç"
-	cardTitleTotalExpenses: string; // Örn: "Toplam Gider"
-	cardTitleTotalNetProfit: string; // Örn: "Net Kar"
-	cardTitleTotalTransactions: string; // Örn: "Toplam İşlem"
-	cardTitleActiveNow: string; // Örn: "Bugün Aktif Şubeler"
+	cardTitleTotalRevenue: string;
+	cardTitleTotalExpenses: string;
+	cardTitleTotalNetProfit: string;
+	cardTitleTotalTransactions: string;
+	cardTitleDataEntryStatus: string; // Güncellendi
+	dataEntryStatusToday: boolean; // Yeni alan
 	dailyBreakdown?: any | null;
 };
 
@@ -90,9 +92,6 @@ function DashboardContent() {
 	}, [searchParams, today]);
 
 	const getInitialBranchId = useCallback((): string => {
-		// Kullanıcının rolüne göre varsayılan branchId'yi de düşünebiliriz,
-		// ancak API zaten 'branch_staff' için bunu zorluyor.
-		// Şimdilik 'all' genel bir varsayılan.
 		return searchParams.get('branch') || 'all';
 	}, [searchParams]);
 
@@ -137,7 +136,6 @@ function DashboardContent() {
 			else params.delete('branch');
 
 			router.replace(`/dashboard?${params.toString()}`, { scroll: false });
-			// fetchDashboardData buradan çağrılmayacak, useEffect tetikleyecek.
 		},
 		[
 			router,
@@ -158,7 +156,7 @@ function DashboardContent() {
 		}) => {
 			setSelectedDateRange(range);
 			setCurrentPresetValue(preset);
-			updateURLAndFetch(range, preset, undefined); // selectedBranchId değişmiyor
+			updateURLAndFetch(range, preset, undefined);
 		},
 		[updateURLAndFetch]
 	);
@@ -166,28 +164,27 @@ function DashboardContent() {
 	const handleBranchChange = useCallback(
 		(branchId: string) => {
 			setSelectedBranchId(branchId);
-			updateURLAndFetch(undefined, undefined, branchId); // selectedDateRange ve preset değişmiyor
+			updateURLAndFetch(undefined, undefined, branchId);
 		},
 		[updateURLAndFetch]
 	);
 
 	useEffect(() => {
-		// URL değiştiğinde state'leri senkronize et (tarayıcı ileri/geri butonları için)
 		const initialRange = getInitialDateRange();
 		const initialPreset =
 			searchParams.get('preset') || getDefaultPresetValueLocal(initialRange);
 		const initialBranch = getInitialBranchId();
 
 		if (
-			!selectedDateRange || // Henüz state set edilmemişse
+			!selectedDateRange ||
 			(selectedDateRange.from &&
 				initialRange.from &&
-				selectedDateRange.from.getTime() !== initialRange.from.getTime()) ||
+				!isSameDay(selectedDateRange.from, initialRange.from)) ||
 			(selectedDateRange.to &&
 				initialRange.to &&
-				selectedDateRange.to.getTime() !== initialRange.to.getTime()) ||
-			(!selectedDateRange.from && initialRange.from) || // State'de from yok ama URL'de varsa
-			(!selectedDateRange.to && initialRange.to) // State'de to yok ama URL'de varsa
+				!isSameDay(selectedDateRange.to, initialRange.to)) ||
+			(!selectedDateRange.from && initialRange.from) ||
+			(!selectedDateRange.to && initialRange.to)
 		) {
 			setSelectedDateRange(initialRange);
 		}
@@ -197,9 +194,6 @@ function DashboardContent() {
 		if (selectedBranchId !== initialBranch) {
 			setSelectedBranchId(initialBranch);
 		}
-		// Eğer state'ler URL ile senkronize değilse, state güncellemeleri zaten
-		// bir sonraki useEffect (veri çekme) bloğunu tetikleyecektir.
-		// Bu nedenle burada ek bir fetch'e gerek yok.
 	}, [
 		searchParams,
 		getInitialDateRange,
@@ -213,7 +207,7 @@ function DashboardContent() {
 		const fetchDashboardData = async () => {
 			if (!selectedDateRange?.from) {
 				setLoading(false);
-				setError('Lütfen bir başlangıç tarihi seçin.'); // Veya kullanıcıya uygun bir mesaj
+				setError('Lütfen bir başlangıç tarihi seçin.');
 				return;
 			}
 			setLoading(true);
@@ -223,7 +217,6 @@ function DashboardContent() {
 			const toDate = selectedDateRange.to
 				? format(selectedDateRange.to, 'yyyy-MM-dd')
 				: fromDate;
-			// selectedBranchId state'ini kullanıyoruz.
 			const branchQuery = selectedBranchId
 				? `&branch=${selectedBranchId}`
 				: '&branch=all';
@@ -239,26 +232,8 @@ function DashboardContent() {
 				const data: DashboardData = await response.json();
 				setDashboardData(data);
 
-				// API, kullanıcının yetkisine göre selectedBranchId'yi (örn: branch_staff için)
-				// veya "all", "all_assigned" gibi değerleri döndürebilir.
-				// Bu değeri, kullanıcı arayüzündeki seçimi yansıtmak için `selectedBranchId` state'i ile senkronize edebiliriz.
-				// Özellikle, eğer API'den gelen `data.selectedBranchId` farklı ise:
-				if (
-					data.selectedBranchId &&
-					data.selectedBranchId !== selectedBranchId
-				) {
-					// Eğer API'den gelen branchId, URL'den veya kullanıcı seçiminden farklıysa
-					// (örn. 'branch_staff' ilk yüklemede kendi şubesine yönlendirildi)
-					// URL'yi ve state'i güncelle.
-					// Ancak bu durum `updateURLAndFetch` ile çakışabilir ve döngüye yol açabilir.
-					// Şimdilik kullanıcı seçimi `selectedBranchId` state'inde tutuluyor ve API'ye bu gönderiliyor.
-					// API'nin döndüğü `data.selectedBranchId` sadece bilgilendirme amaçlı veya
-					// çok özel durumlar için kullanılabilir. Mevcut akışta bu senkronizasyona gerek olmayabilir.
-				}
-
 				if (data && !data.userRole) {
-					// Yetkilendirme sorunu varsa
-					router.push('/login'); // veya yetkisiz erişim sayfasına
+					router.push('/login');
 				}
 			} catch (err) {
 				console.error('Dashboard veri çekme hatası:', err);
@@ -267,20 +242,17 @@ function DashboardContent() {
 				} else {
 					setError('Veriler yüklenirken bilinmeyen bir hata oluştu.');
 				}
-				setDashboardData(null); // Hata durumunda veriyi temizle
+				setDashboardData(null);
 			} finally {
 				setLoading(false);
 			}
 		};
 
 		if (selectedDateRange?.from) {
-			// Sadece geçerli bir tarih aralığı varsa veri çek
 			fetchDashboardData();
 		} else {
-			setLoading(false); // Tarih aralığı yoksa yüklemeyi bitir
-			// setDashboardData(null); // İsteğe bağlı olarak veriyi temizle
+			setLoading(false);
 		}
-		// selectedDateRange veya selectedBranchId değiştiğinde bu effect çalışır.
 	}, [selectedDateRange, selectedBranchId, router]);
 
 	const renderSkeletons = () => (
@@ -291,16 +263,12 @@ function DashboardContent() {
 					<Skeleton className="h-5 w-64" />
 				</div>
 				<div className="flex items-center space-x-2">
-					<Skeleton className="h-10 w-40" /> {/* Şube Select için */}
-					<Skeleton className="h-10 w-[280px]" /> {/* Date picker için */}
-					<Skeleton className="h-10 w-24" /> {/* Rapor butonu için */}
+					<Skeleton className="h-10 w-40" />
+					<Skeleton className="h-10 w-[280px]" />
+					<Skeleton className="h-10 w-24" />
 				</div>
 			</div>
 			<Tabs defaultValue="overview" className="space-y-4">
-				{/* <TabsList>
-                    <Skeleton className="h-10 w-24 mr-2" />
-                    <Skeleton className="h-10 w-24 mr-2 opacity-50" />
-                </TabsList> */}
 				<TabsContent value="overview" className="space-y-4">
 					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
 						{[...Array(5)].map((_, i) => (
@@ -335,24 +303,21 @@ function DashboardContent() {
 				<p className="text-destructive">Hata: {error}</p>
 				<Button
 					onClick={() => {
-						// Hata durumunda varsayılan ayarlara dönüp yeniden deneme
 						const defaultRange = PRESETS_LOCAL.find(
 							(p) => p.value === 'last_7_days'
 						)!.getDateRange();
-						// State'leri güncelleyerek yeniden fetch tetiklenmesini sağla
 						setSelectedDateRange(defaultRange);
 						setCurrentPresetValue('last_7_days');
 						setSelectedBranchId(
-							userRole === 'branch_staff' &&
+							dashboardData?.userRole === 'branch_staff' &&
 								dashboardData?.availableBranches?.length === 1
 								? dashboardData.availableBranches[0].id
 								: 'all'
 						);
-						// URL'yi de güncelle
 						updateURLAndFetch(
 							defaultRange,
 							'last_7_days',
-							userRole === 'branch_staff' &&
+							dashboardData?.userRole === 'branch_staff' &&
 								dashboardData?.availableBranches?.length === 1
 								? dashboardData.availableBranches[0].id
 								: 'all'
@@ -369,31 +334,28 @@ function DashboardContent() {
 		return <div className="flex-1 space-y-4 p-8 pt-6">{renderSkeletons()}</div>;
 	}
 
-	// dashboardData yüklendikten sonra:
 	const {
-		userRole, // API'den gelen userRole
-		availableBranches, // API'den gelen şube listesi
-		// API'den gelen selectedBranchId'yi doğrudan kullanmıyoruz,
-		// kendi state'imiz `selectedBranchId` ve URL parametresi `getInitialBranchId` ile yönetiyoruz.
-		// selectedBranchId: apiSelectedBranchId,
+		userRole,
+		availableBranches,
 		overviewData,
 		totalRevenue,
 		totalExpenses,
 		totalNetProfit,
 		totalTransactions,
-		activeNowCount,
-		cardTitleTotalRevenue, // Sadeleştirilmiş başlıklar
+		cardTitleTotalRevenue,
 		cardTitleTotalExpenses,
 		cardTitleTotalNetProfit,
 		cardTitleTotalTransactions,
-		cardTitleActiveNow,
+		cardTitleDataEntryStatus, // Yeni başlık
+		dataEntryStatusToday, // Yeni veri
 	} = dashboardData;
 
-	// Seçili Şube ve Tarih Aralığı Metnini Oluşturma
 	const getDisplayTexts = () => {
 		let dateDisplay = 'Tarih Aralığı Seçilmedi';
 		if (selectedDateRange?.from && isValid(selectedDateRange.from)) {
-			const fromFormatted = format(selectedDateRange.from, 'dd LLL yy');
+			const fromFormatted = format(selectedDateRange.from, 'dd LLL yy', {
+				locale: tr,
+			});
 			if (
 				selectedDateRange.to &&
 				isValid(selectedDateRange.to) &&
@@ -401,7 +363,8 @@ function DashboardContent() {
 			) {
 				dateDisplay = `${fromFormatted} - ${format(
 					selectedDateRange.to,
-					'dd LLL yy'
+					'dd LLL yy',
+					{ locale: tr }
 				)}`;
 			} else {
 				dateDisplay = fromFormatted;
@@ -409,7 +372,7 @@ function DashboardContent() {
 		}
 
 		let branchDisplay = 'Şube Bilgisi Yüklenemedi';
-		const currentBranchSelection = selectedBranchId; // Kullanıcının seçtiği veya URL'den gelen state
+		const currentBranchSelection = selectedBranchId;
 
 		if (availableBranches && availableBranches.length > 0) {
 			if (currentBranchSelection === 'all') {
@@ -423,13 +386,12 @@ function DashboardContent() {
 				if (foundBranch) {
 					branchDisplay = foundBranch.name;
 				} else if (currentBranchSelection) {
-					// Eğer ID var ama listede yoksa (beklenmedik durum)
 					branchDisplay = `Bilinmeyen Şube (${currentBranchSelection.substring(
 						0,
 						6
 					)}...)`;
 				} else {
-					branchDisplay = 'Şube Seçilmedi'; // Hiçbir şey seçili değilse (teorik olarak olmamalı)
+					branchDisplay = 'Şube Seçilmedi';
 				}
 			}
 		} else if (
@@ -454,7 +416,6 @@ function DashboardContent() {
 	const allBranchesOptionValue =
 		userRole === 'manager' ? 'all_assigned' : 'all';
 
-	// Select placeholder ve "Tüm Şubeler" etiketini dinamikleştirme
 	let dynamicAllBranchesLabel = 'Şube Seçin';
 	if (userRole === 'admin') {
 		dynamicAllBranchesLabel = 'Tüm Şubeler';
@@ -464,9 +425,6 @@ function DashboardContent() {
 				? 'Tüm Yetkili Şubelerim'
 				: 'Atanmış Şube Yok';
 	} else if (userRole === 'branch_staff') {
-		// Personel için 'Tüm Şubeler' seçeneği genellikle olmaz, direkt kendi şubesi seçili gelir.
-		// Eğer birden fazla şubeye erişimi varsa (ki bu senaryoda yok), o zaman düşünülebilir.
-		// Şimdilik, eğer tek şubesi varsa, placeholder'da o görünebilir veya seçici deaktif olabilir.
 		dynamicAllBranchesLabel =
 			availableBranches && availableBranches.length === 1
 				? availableBranches[0].name
@@ -491,17 +449,15 @@ function DashboardContent() {
 											branchDisplay !== 'Şube Seçimi Bekleniyor'
 												? branchDisplay
 												: ''
-									  })` // Personelin şube adını da göster
+									  })`
 									: ''}
 							</h2>
 							<p className="text-sm text-muted-foreground mt-1">
-								{/* branchDisplay ve dateDisplay artık burada gösteriliyor */}
 								{userRole !== 'branch_staff' ? `${branchDisplay} / ` : ''}{' '}
 								{dateDisplay}
 							</p>
 						</div>
 						<div className="flex items-center space-x-2">
-							{/* Şube Seçimi: Sadece admin ve manager için "Tüm Şubeler" vs. seçenekleri aktif. Personel için genellikle kendi şubesi seçili ve deaktif olur. */}
 							{(userRole === 'admin' || userRole === 'manager') &&
 								availableBranches && (
 									<Select
@@ -516,19 +472,16 @@ function DashboardContent() {
 											<SelectValue placeholder={dynamicAllBranchesLabel} />
 										</SelectTrigger>
 										<SelectContent>
-											{/* "Tüm Şubeler" veya "Tüm Yetkili Şubelerim" seçeneği */}
 											{availableBranches.length > 0 && (
 												<SelectItem value={allBranchesOptionValue}>
 													{dynamicAllBranchesLabel}
 												</SelectItem>
 											)}
-											{/* Bireysel şubeler */}
 											{availableBranches.map((branch) => (
 												<SelectItem key={branch.id} value={branch.id}>
 													{branch.name}
 												</SelectItem>
 											))}
-											{/* Manager için atanmış şube yoksa */}
 											{availableBranches.length === 0 &&
 												userRole === 'manager' && (
 													<SelectItem value="no_branch_manager" disabled>
@@ -538,7 +491,6 @@ function DashboardContent() {
 										</SelectContent>
 									</Select>
 								)}
-							{/* Tarih Seçici */}
 							<EnhancedDateRangePicker
 								onDateChange={handleDateChange}
 								initialDateRange={selectedDateRange}
@@ -565,7 +517,7 @@ function DashboardContent() {
 									</CardHeader>
 									<CardContent>
 										<div className="text-2xl font-bold">
-											${totalRevenue.toFixed(2)}
+											₺{totalRevenue.toFixed(2)}
 										</div>
 									</CardContent>
 								</Card>
@@ -577,7 +529,7 @@ function DashboardContent() {
 									</CardHeader>
 									<CardContent>
 										<div className="text-2xl font-bold text-destructive">
-											${totalExpenses.toFixed(2)}
+											₺{totalExpenses.toFixed(2)}
 										</div>
 									</CardContent>
 								</Card>
@@ -593,7 +545,7 @@ function DashboardContent() {
 												totalNetProfit >= 0 ? 'text-green-600' : 'text-red-600'
 											}`}
 										>
-											${totalNetProfit.toFixed(2)}
+											₺{totalNetProfit.toFixed(2)}
 										</div>
 									</CardContent>
 								</Card>
@@ -612,12 +564,23 @@ function DashboardContent() {
 								<Card>
 									<CardHeader className="pb-2">
 										<CardTitle className="text-sm font-medium">
-											{cardTitleActiveNow}
-											{/* İsteğe bağlı: (`${branchDisplay}`) eklenebilir ama yukarıda genel bilgi var. */}
+											{cardTitleDataEntryStatus}
 										</CardTitle>
 									</CardHeader>
 									<CardContent>
-										<div className="text-2xl font-bold">+{activeNowCount}</div>
+										<div className="flex items-center text-2xl font-bold">
+											{dataEntryStatusToday ? (
+												<>
+													<CheckCircle2 className="h-7 w-7 text-green-500 mr-2" />
+													<span className="text-sm">Girildi</span>
+												</>
+											) : (
+												<>
+													<XCircle className="h-7 w-7 text-red-500 mr-2" />
+													<span className="text-sm">Bekleniyor</span>
+												</>
+											)}
+										</div>
 									</CardContent>
 								</Card>
 							</div>
@@ -625,10 +588,7 @@ function DashboardContent() {
 							<div className="grid grid-cols-1 gap-4">
 								<Card className="col-span-1">
 									<CardHeader>
-										<CardTitle>
-											Günlük Kazanç Grafiği
-											{/* İsteğe bağlı: (`${branchDisplay} / ${dateDisplay}`) eklenebilir ama yukarıda zaten var. */}
-										</CardTitle>
+										<CardTitle>Günlük Kazanç ve Net Kâr Grafiği</CardTitle>
 									</CardHeader>
 									<CardContent className="pl-2">
 										{overviewData && overviewData.length > 0 ? (
@@ -655,7 +615,6 @@ export default function DashboardPageWrapper() {
 	return (
 		<Suspense
 			fallback={
-				// Daha detaylı bir fallback iskeleti de düşünülebilir.
 				<div className="flex-1 space-y-4 p-8 pt-6">Sayfa Yükleniyor...</div>
 			}
 		>

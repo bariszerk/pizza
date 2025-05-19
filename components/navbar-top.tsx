@@ -1,41 +1,60 @@
-// components/navbar-top.tsx
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { ModeToggle } from '@/components/ui/theme-toggle-button';
 import { createClient } from '@/utils/supabase/client';
+import { Session } from '@supabase/supabase-js'; // Session tipini import edelim
 import { AnimatePresence, motion } from 'framer-motion';
 import { MenuIcon, XIcon } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation'; // 1. useRouter import edildi
-import { useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react'; // useRef eklendi
 import { UserStatus } from './user-status';
 
 export function TopNavbar() {
 	const supabase = createClient();
 	const router = useRouter();
-	const pathname = usePathname(); // Mevcut yolu almak için
+	const pathname = usePathname();
 	const [role, setRole] = useState<string | null>(null);
 	const [staffBranchId, setStaffBranchId] = useState<string | null>(null);
-	const [loading, setLoading] = useState(true);
+	const [loading, setLoading] = useState(true); // Başlangıçta yükleniyor
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-	// fetchUserData'yı useCallback ile sarmala, çünkü useEffect bağımlılıklarında kullanılacak
+	// Hangi kullanıcı ID'si için rolün başarıyla çekildiğini ve geçerli olduğunu takip eder.
+	const [fetchedRoleForUserId, setFetchedRoleForUserId] = useState<
+		string | null
+	>(null);
+
+	const mountedRef = useRef(true); // Komponentin mount durumunu takip etmek için
+
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+		};
+	}, []);
+
 	const fetchUserData = useCallback(
 		async (userId: string) => {
+			if (!mountedRef.current) return;
 			console.log('TopNavbar: Fetching user data for ID:', userId);
+			setLoading(true); // Veri çekme işlemi başlarken
+
 			const { data: profile, error } = await supabase
 				.from('profiles')
 				.select('role, staff_branch_id')
 				.eq('id', userId)
 				.single();
 
-			if (!error && profile) {
+			if (!mountedRef.current) return;
+
+			if (!error && profile && profile.role) {
 				console.log(
 					'TopNavbar: Profile fetched successfully. Role:',
 					profile.role
 				);
 				setRole(profile.role);
+				setFetchedRoleForUserId(userId); // Bu kullanıcı için rolün başarıyla alındığını işaretle
 				if (profile.role === 'branch_staff') {
 					setStaffBranchId(profile.staff_branch_id);
 				} else {
@@ -43,53 +62,96 @@ export function TopNavbar() {
 				}
 			} else {
 				console.warn(
-					'TopNavbar: Profile fetch error or no profile. Setting role to null. Error:',
-					error?.message
+					'TopNavbar: Profile fetch error or no profile/role. Clearing role. Error:',
+					error?.message,
+					'Profile data:',
+					profile
 				);
-				setRole(null);
+				setRole(null); // Profil alınamazsa veya rol yoksa rolü temizle
+				setFetchedRoleForUserId(null); // Başarılı rol bilgisi olan kullanıcı yok
 				setStaffBranchId(null);
 			}
-			setLoading(false);
+			setLoading(false); // Veri çekme işlemi bittiğinde
 		},
-		[supabase]
-	); // supabase bağımlılığı
+		[supabase] // supabase bağımlılığı stabil olduğu sürece fetchUserData da stabil kalır
+	);
 
 	useEffect(() => {
-		console.log('TopNavbar: useEffect for auth state initiated.');
-		// Bileşen yüklendiğinde mevcut kullanıcıyı kontrol et
+		setLoading(true); // useEffect başladığında genel bir yükleme durumu
+
 		supabase.auth.getSession().then(({ data: { session } }) => {
+			if (!mountedRef.current) return;
 			console.log('TopNavbar: Initial getSession. User ID:', session?.user?.id);
 			if (session?.user) {
-				fetchUserData(session.user.id);
+				// Eğer mevcut rol bu kullanıcı için değilse veya hiç rol yoksa fetch et
+				if (fetchedRoleForUserId !== session.user.id || !role) {
+					fetchUserData(session.user.id);
+				} else {
+					setLoading(false); // Zaten bu kullanıcı için rol var ve yüklü
+				}
 			} else {
 				setRole(null);
+				setFetchedRoleForUserId(null);
 				setStaffBranchId(null);
 				setLoading(false);
 			}
 		});
 
-		// Auth durumundaki değişiklikleri dinle
 		const { data: listener } = supabase.auth.onAuthStateChange(
-			async (_event, session) => {
-				if (_event === 'SIGNED_OUT' || !session?.user) {
+			async (_event: string, session: Session | null) => {
+				// Session tipini belirtelim
+				if (!mountedRef.current) return;
+				console.log(
+					'TopNavbar: onAuthStateChange event:',
+					_event,
+					'Session user ID:',
+					session?.user?.id
+				);
+
+				if (_event === 'SIGNED_OUT') {
 					setRole(null);
+					setFetchedRoleForUserId(null);
 					setStaffBranchId(null);
 					setLoading(false);
-					// Mevcut yol /login değilse yönlendir.
-					// Bu, sayfa zaten /login ise gereksiz yönlendirmeyi önler.
 					if (pathname !== '/login' && pathname !== '/signup') {
-						console.log('TopNavbar: Redirecting to /login from:', pathname);
 						router.push('/login');
 					} else {
-						router.refresh(); // Login sayfasındaysa bile refresh et ki her şey güncel kalsın.
+						router.refresh();
 					}
 					return;
 				}
 
-				// SIGNED_IN veya USER_UPDATED gibi diğer durumlar
 				if (session?.user) {
-					setLoading(true);
-					await fetchUserData(session.user.id);
+					// Sadece kullanıcı ID'si değiştiyse, ya da henüz bu kullanıcı için rol çekilmemişse,
+					// ya da profil güncelleme olayı geldiyse (USER_UPDATED) yeniden veri çek.
+					// TOKEN_REFRESHED gibi olaylarda, eğer kullanıcı aynıysa ve rol zaten varsa,
+					// tekrar fetchUserData çağırmayarak rolün kaybolmasını engelleyebiliriz.
+					if (
+						fetchedRoleForUserId !== session.user.id ||
+						!role || // Henüz bir rol set edilmemişse
+						_event === 'USER_UPDATED' || // Kullanıcı bilgileri güncellendiğinde
+						_event === 'SIGNED_IN' // Yeni giriş yapıldığında
+					) {
+						fetchUserData(session.user.id);
+					} else if (
+						_event === 'TOKEN_REFRESHED' &&
+						fetchedRoleForUserId === session.user.id &&
+						role
+					) {
+						console.log(
+							'TopNavbar: Token refreshed for same user, role retained.'
+						);
+						setLoading(false); // Yükleme durumunu false yap, çünkü rol zaten var.
+					} else if (!role && fetchedRoleForUserId !== session.user.id) {
+						// Bu durum genellikle ilk INITIAL_SESSION sonrası session.user geldiğinde ve henüz fetchUserData çağrılmadığında olabilir.
+						fetchUserData(session.user.id);
+					}
+				} else if (_event !== 'SIGNED_OUT' && !session?.user) {
+					// Oturum beklenmedik bir şekilde null olduysa (SIGNED_OUT dışında)
+					setRole(null);
+					setFetchedRoleForUserId(null);
+					setStaffBranchId(null);
+					setLoading(false);
 				}
 			}
 		);
@@ -97,9 +159,7 @@ export function TopNavbar() {
 		return () => {
 			listener?.subscription?.unsubscribe();
 		};
-	}, [supabase, router, fetchUserData, pathname]); // pathname eklendi
-
-	// ... (geri kalan kod aynı) ...
+	}, [supabase, router, pathname, fetchUserData, role, fetchedRoleForUserId]); // role ve fetchedRoleForUserId bağımlılıkları eklendi.
 
 	const baseNavLinks = [
 		{
@@ -144,6 +204,10 @@ export function TopNavbar() {
 		setIsMobileMenuOpen((prev) => !prev);
 	};
 
+	// Navigasyon linklerini gösterme koşulu: !loading && role
+	// `loading` state'i fetchUserData içinde ve auth state değişikliklerinde yönetiliyor.
+	const showLinks = !loading && role;
+
 	return (
 		<header className="bg-background border-b border-border px-4 py-3 sticky top-0 z-50">
 			<div className="container mx-auto flex items-center justify-between">
@@ -167,9 +231,7 @@ export function TopNavbar() {
 				</div>
 
 				<nav className="hidden lg:flex items-center space-x-1">
-					{/* Sadece loading false ve rol varsa linkleri göster */}
-					{!loading &&
-						role &&
+					{showLinks &&
 						filteredLinks.map((link) => (
 							<Link key={link.href} href={link.href} passHref legacyBehavior>
 								<Button asChild variant="ghost" className="text-sm">
@@ -195,9 +257,7 @@ export function TopNavbar() {
 						className="lg:hidden overflow-hidden border-t border-border"
 					>
 						<div className="flex flex-col space-y-1 px-2 pt-2 pb-3">
-							{/* Sadece loading false ve rol varsa linkleri göster */}
-							{!loading &&
-								role &&
+							{showLinks &&
 								filteredLinks.map((link) => (
 									<Link
 										key={link.href}

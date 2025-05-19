@@ -14,6 +14,7 @@ import {
 	subDays,
 	subMonths,
 } from 'date-fns';
+import { tr } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import * as React from 'react';
 import { DateRange } from 'react-day-picker';
@@ -402,9 +403,13 @@ export function EnhancedDateRangePicker({
 		const { from, to } = currentAppliedDate;
 		if (from && isValid(from)) {
 			if (to && isValid(to) && !isSameDay(from, to)) {
-				return `${format(from, 'LLL dd, y')} - ${format(to, 'LLL dd, y')}`;
+				return `${format(from, 'dd MMM yy', { locale: tr })} - ${format(
+					to,
+					'dd MMM yy',
+					{ locale: tr }
+				)}`; // Türkçe format
 			}
-			return format(from, 'LLL dd, y');
+			return format(from, 'dd MMM yy', { locale: tr }); // Türkçe format
 		}
 		return 'Tarih Seçin'; // Fallback
 	}, [currentAppliedDate, selectedPreset]);
@@ -487,6 +492,7 @@ export function EnhancedDateRangePicker({
 									setPendingCustomDate(newRange); // veya undefined/null
 								}
 							}}
+							locale={tr} // Takvim için Türkçe locale
 							numberOfMonths={2}
 							disabled={{ after: endOfDay(new Date()) }} // Bugünün sonundan sonrasını devre dışı bırak
 						/>

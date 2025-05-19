@@ -1,11 +1,13 @@
-// app/dashboard/dashboard_pages/overview.tsx dosyasında değişiklikler
+// app/dashboard/dashboard_pages/overview.tsx
 'use client';
 
-import { useTheme } from 'next-themes'; // useTheme import edildi
+import { useTheme } from 'next-themes';
 import {
 	Bar,
-	BarChart,
-	Legend,
+	CartesianGrid,
+	ComposedChart,
+	Legend, // ComposedChart eklendi
+	Line,
 	Tooltip as RechartsTooltip,
 	ResponsiveContainer,
 	XAxis,
@@ -13,23 +15,28 @@ import {
 } from 'recharts';
 
 type OverviewProps = {
-	data: { name: string; total: number }[];
+	data: { name: string; kazanc: number; netKar: number }[]; // Data tipi güncellendi
 };
 
 export function Overview({ data }: OverviewProps) {
-	const { resolvedTheme } = useTheme(); // Mevcut çözümlenmiş temayı al (light veya dark)
+	const { resolvedTheme } = useTheme();
 
-	// Tema'ya göre renkleri belirle
-	const tickColor = resolvedTheme === 'dark' ? '#a1a1aa' : '#71717a'; // zinc-500 (dark) vs zinc-400 (light) - muted-foreground için
-	const legendColor = resolvedTheme === 'dark' ? '#e4e4e7' : '#3f3f46'; // zinc-200 (dark) vs zinc-700 (light) - foreground/popover-foreground için
-	const tooltipBgColor = resolvedTheme === 'dark' ? '#27272a' : '#ffffff'; // zinc-800 (dark) vs white (light) - popover için
-	const tooltipTextColor = resolvedTheme === 'dark' ? '#e4e4e7' : '#09090b'; // zinc-200 (dark) vs zinc-950 (light) - popover-foreground için
-	const tooltipBorderColor = resolvedTheme === 'dark' ? '#3f3f46' : '#e4e4e7'; // zinc-700 (dark) vs zinc-200 (light) - border için
+	const tickColor = resolvedTheme === 'dark' ? '#a1a1aa' : '#71717a';
+	const legendColor = resolvedTheme === 'dark' ? '#e4e4e7' : '#3f3f46';
+	const tooltipBgColor = resolvedTheme === 'dark' ? '#27272a' : '#ffffff';
+	const tooltipTextColor = resolvedTheme === 'dark' ? '#e4e4e7' : '#09090b';
+	const tooltipBorderColor = resolvedTheme === 'dark' ? '#3f3f46' : '#e4e4e7';
 
-	const barColor =
+	// Renkler tema değişkenlerinden alınabilir veya sabit kalabilir
+	const kazancBarColor =
 		resolvedTheme === 'dark'
-			? 'hsl(210 40% 96.1%)' /* primary-foreground gibi açık bir renk */
-			: 'hsl(222.2 47.4% 11.2%)'; /* primary */
+			? 'hsl(142.1 70.6% 45.3%)'
+			: 'hsl(142.1 76.2% 36.3%)'; // Yeşil tonu
+	const netKarLineColor =
+		resolvedTheme === 'dark'
+			? 'hsl(262.1 83.3% 57.8%)'
+			: 'hsl(262.1 83.3% 57.8%)'; // Mor/Mavi tonu (veya farklı bir bar için başka bir renk)
+	// const netKarBarColor = resolvedTheme === 'dark' ? 'hsl(210 40% 96.1%)' : 'hsl(222.2 47.4% 11.2%)'; // Örnek renk
 
 	if (!data || data.length === 0) {
 		return (
@@ -41,7 +48,13 @@ export function Overview({ data }: OverviewProps) {
 
 	return (
 		<ResponsiveContainer width="100%" height={350}>
-			<BarChart data={data}>
+			<ComposedChart
+				data={data}
+				margin={{ top: 5, right: 20, left: -20, bottom: 5 }}
+			>
+				{' '}
+				{/* Margin ayarlandı */}
+				<CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
 				<XAxis
 					dataKey="name"
 					stroke={tickColor}
@@ -54,23 +67,34 @@ export function Overview({ data }: OverviewProps) {
 					fontSize={12}
 					tickLine={false}
 					axisLine={false}
-					tickFormatter={(value) => `$${value}`}
+					tickFormatter={(value) => `₺${value}`}
 				/>
 				<RechartsTooltip
-					formatter={(value: number) => [`$${value.toFixed(2)}`, 'Kazanç']}
+					formatter={(value: number, name: string) => {
+						const currencyValue = `₺${value.toFixed(2)}`;
+						if (name === 'kazanc') return [currencyValue, 'Günlük Kazanç'];
+						if (name === 'netKar') return [currencyValue, 'Günlük Net Kâr'];
+						return [currencyValue, name];
+					}}
 					cursor={{
 						fill:
 							resolvedTheme === 'dark'
-								? 'rgba(161, 161, 170, 0.3)'
-								: 'rgba(228, 228, 231, 0.3)',
-					}} // accent benzeri bir renk
+								? 'rgba(161, 161, 170, 0.1)' // Daha transparan
+								: 'rgba(228, 228, 231, 0.2)', // Daha transparan
+					}}
 					contentStyle={{
 						backgroundColor: tooltipBgColor,
 						border: `1px solid ${tooltipBorderColor}`,
-						borderRadius: '0.5rem', // globals.css'deki --radius gibi
+						borderRadius: '0.5rem',
 						color: tooltipTextColor,
+						boxShadow:
+							'0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)', // Hafif gölge
 					}}
-					labelStyle={{ color: tooltipTextColor }}
+					labelStyle={{
+						color: tooltipTextColor,
+						fontWeight: 'bold',
+						marginBottom: '4px',
+					}}
 					itemStyle={{ color: tooltipTextColor }}
 				/>
 				<Legend
@@ -79,14 +103,39 @@ export function Overview({ data }: OverviewProps) {
 						color: legendColor,
 						paddingTop: '10px',
 					}}
+					payload={[
+						// Legend'ı manuel olarak tanımlayabiliriz
+						{
+							value: 'Günlük Kazanç',
+							type: 'square',
+							id: 'kazanc',
+							color: kazancBarColor,
+						},
+						{
+							value: 'Günlük Net Kâr',
+							type: 'line',
+							id: 'netKar',
+							color: netKarLineColor,
+						},
+					]}
 				/>
 				<Bar
-					dataKey="total"
+					dataKey="kazanc"
+					name="kazanc" // Tooltip ve Legend için
+					fill={kazancBarColor}
 					radius={[4, 4, 0, 0]}
-					fill={barColor} // Doğrudan JavaScript değişkeninden rengi ata
-					// className="fill-primary" yerine fill prop'unu kullanmak daha garantili olabilir
+					barSize={20} // Bar kalınlığını ayarlayabilirsiniz
 				/>
-			</BarChart>
+				<Line
+					type="monotone"
+					dataKey="netKar"
+					name="netKar" // Tooltip ve Legend için
+					stroke={netKarLineColor}
+					strokeWidth={2}
+					dot={{ r: 4, strokeWidth: 2, fill: netKarLineColor }}
+					activeDot={{ r: 6, strokeWidth: 2 }}
+				/>
+			</ComposedChart>
 		</ResponsiveContainer>
 	);
 }
