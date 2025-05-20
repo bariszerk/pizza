@@ -643,10 +643,11 @@ export default function AdminBranchesPage() {
 														Atanmış Yöneticiler
 													</TableHead>
 												)}
-												<TableHead className="w-[15%]">Personel</TableHead>
-												<TableHead className="text-right w-[15%]">
-													İşlemler
-												</TableHead>
+												{currentUserRole === 'admin' && (
+													<TableHead className="text-right w-[15%]">
+														İşlemler
+													</TableHead>
+												)}
 											</TableRow>
 										</TableHeader>
 										<TableBody>
@@ -713,7 +714,7 @@ export default function AdminBranchesPage() {
 														<Button
 															variant="outline"
 															size="sm"
-															className="text-xs w-full"
+															className="text-xs" // w-full kaldırıldı, buton artık içeriğine göre boyutlanacak
 															onClick={() => openAssignStaffModal(branch)}
 														>
 															Personel Yönet

@@ -223,105 +223,117 @@ function DashboardContent() {
 		[] // No dependencies, relies on arguments
 	);
 
-	// ComponentDidMount - Initial data fetch and branch selection logic
 	useEffect(() => {
 		const initializeDashboard = async () => {
 			setLoading(true);
-			const initialRange = getInitialDateRange(); // This needs to be stable or memoized if it causes re-runs
-			setSelectedDateRange(initialRange);
-			setCurrentPresetValue(
-				searchParams.get('preset') || getDefaultPresetValueLocal(initialRange)
-			);
-			currentSelectedDateRangeRef.current = initialRange;
-			currentPresetValueRef.current =
-				searchParams.get('preset') || getDefaultPresetValueLocal(initialRange);
+			setError(null);
 
 			try {
-				// Fetch user role and available branches first (branchId is not needed for this)
+				// 1) Başlangıç tarih aralığını al
+				const initialRange = getInitialDateRange();
+
 				const fromDate = format(initialRange.from!, 'yyyy-MM-dd');
 				const toDate = initialRange.to
 					? format(initialRange.to, 'yyyy-MM-dd')
 					: fromDate;
 
-				const initialApiResponse = await fetch(
+				// 2) Kullanıcı rolü ve şubeleri çek
+				const initialRes = await fetch(
 					`/api/dashboard-data?from=${fromDate}&to=${toDate}`
 				);
-
-				if (!initialApiResponse.ok) {
-					const errorData = await initialApiResponse.json();
+				if (!initialRes.ok) {
+					const err = await initialRes.json();
 					throw new Error(
-						errorData.error || 'Kullanıcı ve şube bilgileri alınamadı.'
+						err.error || 'Kullanıcı ve şube bilgileri alınamadı.'
 					);
 				}
-				const initialApiData: Pick<
-					DashboardData,
-					'userRole' | 'availableBranches' | 'selectedBranchId'
-				> = await initialApiResponse.json();
+				const { userRole, availableBranches } = await initialRes.json();
 
-				if (
-					initialApiData.userRole !== 'admin' &&
-					initialApiData.userRole !== 'manager'
-				) {
+				// 3) Yetki kontrolü
+				if (userRole !== 'admin' && userRole !== 'manager') {
 					router.push('/');
 					return;
 				}
 
-				setDashboardData(
-					(prev) => ({ ...prev, ...initialApiData } as DashboardData)
+				// 4) DashboardData’ya userRole ve branches ekle
+				setDashboardData((prev) =>
+					prev
+						? {
+								...prev,
+								userRole,
+								availableBranches,
+						  }
+						: {
+								userRole,
+								availableBranches,
+								selectedBranchId: null,
+								overviewData: [],
+								totalRevenue: 0,
+								totalExpenses: 0,
+								totalNetProfit: 0,
+								totalTransactions: 0,
+								cardTitleTotalRevenue: '',
+								cardTitleTotalExpenses: '',
+								cardTitleTotalNetProfit: '',
+								cardTitleTotalTransactions: '',
+								cardTitleDataEntryStatus: '',
+								dataEntryStatusToday: false,
+								dailyBreakdown: [],
+						  }
 				);
 
+				// 5) Otomatik şube seçimi: URL, localStorage veya tek branch
 				const urlBranch = searchParams.get('branch');
-				const lastSelectedBranch =
+				const lastBranch =
 					typeof window !== 'undefined'
 						? localStorage.getItem(LOCAL_STORAGE_BRANCH_KEY)
 						: null;
-				let branchToSet: string | null = null;
 
+				let branchToSet: string | null = null;
 				if (
 					urlBranch &&
-					initialApiData.availableBranches.some((b) => b.id === urlBranch)
+					availableBranches.some((b: BranchInfo) => b.id === urlBranch)
 				) {
 					branchToSet = urlBranch;
 				} else if (
-					lastSelectedBranch &&
-					initialApiData.availableBranches.some(
-						(b) => b.id === lastSelectedBranch
-					)
+					lastBranch &&
+					availableBranches.some((b: BranchInfo) => b.id === lastBranch)
 				) {
-					branchToSet = lastSelectedBranch;
-				} else if (initialApiData.availableBranches.length === 1) {
-					branchToSet = initialApiData.availableBranches[0].id;
+					branchToSet = lastBranch;
+				} else if (availableBranches.length === 1) {
+					branchToSet = availableBranches[0].id;
 				}
 
 				if (branchToSet) {
+					// 6) State, storage ve URL’ı güncelle
 					setSelectedBranchId(branchToSet);
-					if (
-						branchToSet !== lastSelectedBranch &&
-						typeof window !== 'undefined'
-					) {
+					if (typeof window !== 'undefined') {
 						localStorage.setItem(LOCAL_STORAGE_BRANCH_KEY, branchToSet);
 					}
-					if (branchToSet !== urlBranch) {
-						// Update URL if needed
-						updateURL(initialRange, currentPresetValueRef.current, branchToSet);
-					}
-					// Data will be fetched by the next useEffect that depends on selectedBranchId
-				} else if (initialApiData.availableBranches.length > 0) {
+					updateURL(initialRange, currentPresetValueRef.current, branchToSet);
+
+					// 7) **BURADA** hemen veri çekimini yapıyoruz
+					await fetchDashboardData(branchToSet, initialRange);
+				} else if (availableBranches.length > 0) {
+					// Kullanıcının seçmesi için modal aç
 					setShowBranchSelectModal(true);
-					setLoading(false); // Modal shown, stop main loading
 				} else {
 					setError('Erişebileceğiniz bir şube bulunmamaktadır.');
-					setLoading(false);
 				}
 			} catch (e) {
-				if (e instanceof Error) setError(e.message);
-				else setError('Dashboard başlatılırken bir hata oluştu.');
+				setError(
+					e instanceof Error
+						? e.message
+						: 'Dashboard başlatılırken bir hata oluştu.'
+				);
+			} finally {
 				setLoading(false);
 			}
 		};
+
 		initializeDashboard();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []); // Runs only once on mount
+		// Bu effect’i yalnızca component mount’unda çalıştırıyoruz
+	}, []);
 
 	// Fetch data when selectedBranchId or selectedDateRange changes
 	// 1) Veri çekme useEffect'i
