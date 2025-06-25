@@ -6,11 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createClient } from '@/utils/supabase/client';
-import { useRouter, useSearchParams } from 'next/navigation'; // useSearchParams for potential error messages
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react'; // Added Suspense
 import { toast } from 'sonner';
 
-export default function UpdatePasswordPage() {
+// Component that uses useSearchParams
+function UpdatePasswordFormComponent() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -102,5 +103,14 @@ export default function UpdatePasswordPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+// Default export page component
+export default function UpdatePasswordPage() {
+    return (
+        <Suspense fallback={<div className="flex min-h-auto w-full items-center justify-center p-6 md:p-10">Yükleniyor...</div>}>
+            <UpdatePasswordFormComponent />
+        </Suspense>
     );
 }
