@@ -145,8 +145,10 @@ export function useAuth(): AuthState {
                         console.log('useAuth: Token refreshed for same user, profile retained.');
                         setLoading(false); // No need to re-fetch if profile for this user is already loaded
                     }
-                } else if (event !== 'SIGNED_OUT' && !newSession?.user) {
-                    // Session became null unexpectedly
+                } else if (!newSession?.user) {
+                    // If event is not 'SIGNED_OUT' and session is null, this block will be reached.
+                    // This covers cases where session becomes null without an explicit 'SIGNED_OUT' event.
+                    console.log('useAuth: Session is null and event is not SIGNED_OUT. Event:', event);
                     setProfile(null);
                     setRole(null);
                     setStaffBranchId(null);
