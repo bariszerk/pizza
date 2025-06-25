@@ -14,7 +14,7 @@ import { tr } from 'date-fns/locale';
 import {
 	AlertTriangle,
 	CheckCircle2,
-	DollarSign,
+	// DollarSign, // Removed unused import
 	FileText,
 	ListChecks,
 	TrendingDown,
@@ -332,8 +332,7 @@ function DashboardContent() {
 		};
 
 		initializeDashboard();
-		// Bu effect’i yalnızca component mount’unda çalıştırıyoruz
-	}, []);
+	}, [fetchDashboardData, getInitialDateRange, router, searchParams, updateURL]); // Added dependencies
 
 	// Fetch data when selectedBranchId or selectedDateRange changes
 	// 1) Veri çekme useEffect'i
@@ -342,7 +341,7 @@ function DashboardContent() {
 			fetchDashboardData(selectedBranchId, selectedDateRange);
 		}
 		// Sadece branch veya tarih aralığı değişince, modal kapalıysa çalışır.
-	}, [selectedBranchId, selectedDateRange, showBranchSelectModal]);
+	}, [selectedBranchId, selectedDateRange, showBranchSelectModal, fetchDashboardData]); // Added fetchDashboardData
 
 	// 2) Modal açma useEffect'i
 	useEffect(() => {
