@@ -48,29 +48,30 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    const publicPaths = ['/login', '/signup', '/auth', '/verify-email']; // Added /verify-email
+    const publicPaths = ['/login', '/signup', '/auth', '/verify-email', '/forgot-password', '/update-password'];
     if (publicPaths.some(path => pathname.startsWith(path))) {
+        // Kullanıcı giriş yapmışsa ve login/signup sayfalarına gitmeye çalışıyorsa ana sayfasına yönlendir.
         if (user && (pathname.startsWith('/login') || pathname.startsWith('/signup'))) {
-            // If user is logged in and tries to access login/signup, redirect them
             const { data: profile } = await supabase.from('profiles').select('role, staff_branch_id').eq('id', user.id).single();
             if (profile?.role === 'branch_staff' && profile?.staff_branch_id) {
                 return NextResponse.redirect(new URL(`/branch/${profile.staff_branch_id}`, request.url), { headers: response.headers });
             }
             return NextResponse.redirect(new URL('/dashboard', request.url), { headers: response.headers });
         }
-        return response; // Allow access to public paths
+        // Diğer public yollara (forgot-password, update-password, verify-email) her zaman izin ver.
+        return response;
     }
 
+    // Eğer public bir yol değilse ve kullanıcı yoksa, /login'e yönlendir.
+    // Ana sayfa ('/') ve yetkilendirme bekleyen sayfa ('/authorization-pending') hariç.
     if (!user) {
-        // If not a public path and no user, redirect to login
-        // Allow access to '/' and '/authorization-pending' even without a user for specific landing page logic.
         if (pathname === '/' || pathname.startsWith('/authorization-pending')) {
             return response;
         }
         return NextResponse.redirect(new URL('/login', request.url), { headers: response.headers });
     }
 
-    // Check for email verification for logged-in users
+    // E-posta doğrulaması kontrolü (giriş yapmış kullanıcılar için)
     // user.email_confirmed_at will exist if email is confirmed
     // user.new_email will exist if user is trying to change email - this flow is not implemented yet, but good to be aware
     if (!user.email_confirmed_at && pathname !== '/verify-email') {

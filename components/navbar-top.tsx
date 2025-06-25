@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth'; // Import the custom hook
 import { AnimatePresence, motion } from 'framer-motion';
 import { MenuIcon, XIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react'; // useMemo import edildi
 import { UserStatus } from './user-status';
 
 export function TopNavbar() {
@@ -36,35 +36,39 @@ export function TopNavbar() {
 		},
 	];
 
-	const dynamicNavLinks = [...baseNavLinks];
-	if (role === 'branch_staff') {
-		if (staffBranchId) {
-			dynamicNavLinks.unshift({
-				href: `/branch/${staffBranchId}`,
-				label: 'Şubem',
-				roles: ['branch_staff'],
-			});
-		} else {
-			dynamicNavLinks.unshift({
-				href: '/authorization-pending',
-				label: 'Şubem (Atanmadı)',
-				roles: ['branch_staff'],
-			});
+	const dynamicNavLinks = useMemo(() => {
+		const links = [...baseNavLinks];
+		if (role === 'branch_staff') {
+			if (staffBranchId) {
+				links.unshift({
+					href: `/branch/${staffBranchId}`,
+					label: 'Şubem',
+					roles: ['branch_staff'],
+				});
+			} else {
+				links.unshift({
+					href: '/authorization-pending',
+					label: 'Şubem (Atanmadı)',
+					roles: ['branch_staff'],
+				});
+			}
 		}
-	}
+		return links;
+	}, [role, staffBranchId]); // baseNavLinks sabit olduğu için bağımlılıklara eklenmedi
 
-	const filteredLinks = dynamicNavLinks.filter((link) =>
-		link.roles.includes(role ?? 'guest')
-	);
+	const filteredLinks = useMemo(() => {
+		if (authLoading) return []; // Yükleniyorsa hiç link gösterme
+		return dynamicNavLinks.filter((link) =>
+			link.roles.includes(role ?? 'guest')
+		);
+	}, [dynamicNavLinks, role, authLoading]);
 
 	const toggleMobileMenu = () => {
 		setIsMobileMenuOpen((prev) => !prev);
 	};
 
-	// Navigasyon linklerini gösterme koşulu: !loading && role
-	// `authLoading` state from useAuth hook indicates if user data is being loaded.
-	// Links should be shown only when loading is complete and a role is determined.
-	const showLinks = !authLoading && role;
+	// Navigasyon linklerini gösterme koşulu: !loading && role ve filtrelenmiş link varsa
+	const showLinks = !authLoading && role && filteredLinks.length > 0;
 
 	return (
 		<header className="bg-background border-b border-border px-4 py-3 sticky top-0 z-50">
