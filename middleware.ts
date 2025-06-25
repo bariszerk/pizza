@@ -48,37 +48,23 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    const publicPaths = ['/login', '/signup', '/auth', '/verify-email']; // Added /verify-email
+    const publicPaths = ['/login', '/signup', '/auth'];
     if (publicPaths.some(path => pathname.startsWith(path))) {
         if (user && (pathname.startsWith('/login') || pathname.startsWith('/signup'))) {
-            // If user is logged in and tries to access login/signup, redirect them
             const { data: profile } = await supabase.from('profiles').select('role, staff_branch_id').eq('id', user.id).single();
             if (profile?.role === 'branch_staff' && profile?.staff_branch_id) {
                 return NextResponse.redirect(new URL(`/branch/${profile.staff_branch_id}`, request.url), { headers: response.headers });
             }
             return NextResponse.redirect(new URL('/dashboard', request.url), { headers: response.headers });
         }
-        return response; // Allow access to public paths
+        return response;
     }
 
     if (!user) {
-        // If not a public path and no user, redirect to login
-        // Allow access to '/' and '/authorization-pending' even without a user for specific landing page logic.
         if (pathname === '/' || pathname.startsWith('/authorization-pending')) {
             return response;
         }
         return NextResponse.redirect(new URL('/login', request.url), { headers: response.headers });
-    }
-
-    // Check for email verification for logged-in users
-    // user.email_confirmed_at will exist if email is confirmed
-    // user.new_email will exist if user is trying to change email - this flow is not implemented yet, but good to be aware
-    if (!user.email_confirmed_at && pathname !== '/verify-email') {
-        // If email is not confirmed and user is not already on verify-email page, redirect them.
-        // Also ensure we don't block API calls or static assets needed by the verify-email page itself,
-        // though the matcher should handle most of this.
-        console.log(`Middleware: User ${user.id} email not confirmed. Redirecting to /verify-email.`);
-        return NextResponse.redirect(new URL('/verify-email', request.url), { headers: response.headers });
     }
 
     let userRole: string | null = null;
