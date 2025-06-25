@@ -74,7 +74,8 @@ export function SignUpForm({
 			}
 
 			console.log('Kayıt ve profil güncelleme başarılı:', data);
-			router.push('/login');
+			// Redirect to the email verification page
+			router.push('/verify-email');
 		}
 
 		setLoading(false);
