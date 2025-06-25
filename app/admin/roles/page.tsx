@@ -20,6 +20,7 @@ import {
 import { createClient } from '@/utils/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 type Profile = {
 	id: string;
@@ -31,17 +32,13 @@ type Profile = {
 
 export default function RoleManagementPage() {
 	const [profiles, setProfiles] = useState<Profile[]>([]);
-	const [loading, setLoading] = useState<boolean>(false);
+	const [loading, setLoading] = useState<boolean>(true); // Başlangıçta true olmalı
 	const [error, setError] = useState<string | null>(null);
 
-	// Değişen rolleri geçici olarak sakladığımız alan
 	const [changes, setChanges] = useState<{ [id: string]: string }>({});
-	// Her bir satırın "saving" durumunu tutuyoruz
 	const [saving, setSaving] = useState<{ [id: string]: boolean }>({});
 
-	// Modal kontrolü
 	const [confirmOpen, setConfirmOpen] = useState(false);
-	// Modal’a tıklayınca hangi profileID ve hangi role onaylanacak?
 	const [confirmTarget, setConfirmTarget] = useState<{
 		id: string;
 		role: string;
@@ -49,15 +46,16 @@ export default function RoleManagementPage() {
 
 	const supabase = createClient();
 
-	// Profilleri Supabase'den çek
 	const fetchProfiles = async () => {
 		setLoading(true);
-		const { data, error } = await supabase
+		setError(null);
+		const { data, error: fetchError } = await supabase
 			.from('profiles')
 			.select('id, first_name, last_name, role, email');
 
-		if (error) {
-			setError(error.message);
+		if (fetchError) {
+			setError(`Kullanıcı verileri çekilirken bir hata oluştu: ${fetchError.message}`);
+			toast.error(`Veri çekme hatası: ${fetchError.message}`);
 		} else {
 			setProfiles(data as Profile[]);
 		}
@@ -69,45 +67,38 @@ export default function RoleManagementPage() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	// Belirli bir kullanıcının rolünü güncelleme fonksiyonu
 	const updateRole = async (id: string, newRole: string) => {
 		setSaving((prev) => ({ ...prev, [id]: true }));
 
-		const { error } = await supabase
+		const { error: updateError } = await supabase
 			.from('profiles')
 			.update({ role: newRole })
 			.eq('id', id);
 
-		if (error) {
-			alert('Güncelleme hatası: ' + error.message);
+		if (updateError) {
+			toast.error(`Rol güncellenirken hata: ${updateError.message}`);
+			setError(`Rol güncellenirken hata: ${updateError.message}`);
 		} else {
-			// Yerel state'i de güncelle
+			toast.success('Kullanıcı rolü başarıyla güncellendi.');
 			setProfiles((prev) =>
 				prev.map((profile) =>
 					profile.id === id ? { ...profile, role: newRole } : profile
 				)
 			);
-
-			// Değişikliği sil
 			setChanges((prev) => {
 				const updated = { ...prev };
 				delete updated[id];
 				return updated;
 			});
 		}
-
 		setSaving((prev) => ({ ...prev, [id]: false }));
 	};
 
-	// Güncelle butonuna tıklayınca modal açma
 	const handleUpdateClick = (id: string, currentRole: string) => {
-		// confirmTarget state’ini setle
 		setConfirmTarget({ id, role: currentRole });
-		// modal’ı aç
 		setConfirmOpen(true);
 	};
 
-	// Modalda "Güncelle" butonuna basıldığında
 	const handleConfirm = () => {
 		if (confirmTarget) {
 			updateRole(confirmTarget.id, confirmTarget.role);
@@ -118,20 +109,29 @@ export default function RoleManagementPage() {
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center py-20">
-				<p>Yükleniyor...</p>
+				<p>Kullanıcı rolleri yükleniyor, lütfen bekleyin...</p>
 			</div>
 		);
 	}
-	if (error) {
+	if (error && profiles.length === 0) { // Sadece hiç profil yüklenemediyse bu hatayı göster
 		return (
-			<div className="flex items-center justify-center py-20">
+			<div className="container mx-auto px-4 py-6 text-destructive">
 				<p>Hata: {error}</p>
+				<Button onClick={fetchProfiles} className="mt-4">
+					Tekrar Dene
+				</Button>
 			</div>
 		);
 	}
 
 	return (
 		<div className="container mx-auto px-4 py-6">
+			<h1 className="text-2xl font-semibold mb-6">Kullanıcı Rol Yönetimi</h1>
+			{error && profiles.length > 0 && ( // Profiller varken de hata mesajını göster ama daha az rahatsız edici
+				<div className="mb-4 p-3 bg-destructive/10 text-destructive border border-destructive rounded-md">
+					<p>{error}</p>
+				</div>
+			)}
 			<AnimatePresence>
 				<motion.div
 					key="role-table"
@@ -140,79 +140,116 @@ export default function RoleManagementPage() {
 					exit={{ opacity: 0, y: 20 }}
 					transition={{ duration: 0.4 }}
 				>
-					{/* Tabloyu yatay scroll'a uyumlu yap */}
-					<div className="overflow-x-auto w-full">
-						<Table className="w-full min-w-[600px]">
+					<div className="overflow-x-auto w-full border rounded-lg">
+						<Table className="w-full min-w-[700px]">
 							<TableHeader>
 								<TableRow>
-									<TableHead>Email</TableHead>
-									<TableHead>Ad Soyad</TableHead>
-									<TableHead>Rol</TableHead>
-									<TableHead>İşlemler</TableHead>
+									<TableHead className="w-[30%]">E-posta Adresi</TableHead>
+									<TableHead className="w-[25%]">Ad Soyad</TableHead>
+									<TableHead className="w-[25%]">Kullanıcı Rolü</TableHead>
+									<TableHead className="text-right w-[20%]">İşlemler</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{profiles.map((profile) => {
-									const currentRole = changes[profile.id] ?? profile.role;
-									const hasChanged = currentRole !== profile.role;
+								{profiles.length === 0 && !loading ? (
+									<TableRow>
+										<TableCell colSpan={4} className="text-center py-10">
+											Sistemde kayıtlı kullanıcı bulunamadı.
+										</TableCell>
+									</TableRow>
+								) : (
+									profiles.map((profile) => {
+										const currentRole = changes[profile.id] ?? profile.role;
+										const hasChanged = currentRole !== profile.role;
 
-									return (
-										<TableRow key={profile.id}>
-											<TableCell>{profile.email || '—'}</TableCell>
-											<TableCell>
-												{profile.first_name} {profile.last_name}
-											</TableCell>
-											<TableCell>
-												<Select
-													value={currentRole}
-													onValueChange={(value) =>
-														setChanges((prev) => ({
-															...prev,
-															[profile.id]: value,
-														}))
-													}
-												>
-													<SelectTrigger className="w-full md:w-[180px]">
-														<SelectValue placeholder={profile.role} />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="admin">Admin</SelectItem>
-														<SelectItem value="manager">Manager</SelectItem>
-														<SelectItem value="branch_staff">
-															Branch Staff
-														</SelectItem>
-														<SelectItem value="user">User</SelectItem>
-													</SelectContent>
-												</Select>
-											</TableCell>
-											<TableCell>
-												<Button
-													size="sm"
-													onClick={() =>
-														handleUpdateClick(profile.id, currentRole)
-													}
-													disabled={!hasChanged || saving[profile.id]}
-												>
-													{saving[profile.id] ? 'Güncelleniyor...' : 'Güncelle'}
-												</Button>
-											</TableCell>
-										</TableRow>
-									);
-								})}
+										return (
+											<TableRow key={profile.id}>
+												<TableCell className="font-medium">
+													{profile.email || 'Belirtilmemiş'}
+												</TableCell>
+												<TableCell>
+													{profile.first_name || profile.last_name
+														? `${profile.first_name || ''} ${
+																profile.last_name || ''
+														  }`.trim()
+														: 'Belirtilmemiş'}
+												</TableCell>
+												<TableCell>
+													<Select
+														value={currentRole}
+														onValueChange={(value) =>
+															setChanges((prev) => ({
+																...prev,
+																[profile.id]: value,
+															}))
+														}
+													>
+														<SelectTrigger className="w-full md:w-[200px]">
+															<SelectValue
+																placeholder={
+																	currentRole === 'admin'
+																		? 'Yönetici'
+																		: currentRole === 'manager'
+																		? 'Müdür'
+																		: currentRole === 'branch_staff'
+																		? 'Şube Personeli'
+																		: currentRole === 'user'
+																		? 'Kullanıcı'
+																		: profile.role
+																}
+															/>
+														</SelectTrigger>
+														<SelectContent>
+															<SelectItem value="admin">Yönetici</SelectItem>
+															<SelectItem value="manager">Müdür</SelectItem>
+															<SelectItem value="branch_staff">
+																Şube Personeli
+															</SelectItem>
+															<SelectItem value="user">Kullanıcı</SelectItem>
+														</SelectContent>
+													</Select>
+												</TableCell>
+												<TableCell className="text-right">
+													<Button
+														size="sm"
+														onClick={() =>
+															handleUpdateClick(profile.id, currentRole)
+														}
+														disabled={!hasChanged || saving[profile.id]}
+														variant={hasChanged ? 'default' : 'outline'}
+													>
+														{saving[profile.id]
+															? 'Kaydediliyor...'
+															: 'Rolü Güncelle'}
+													</Button>
+												</TableCell>
+											</TableRow>
+										);
+									})
+								)}
 							</TableBody>
 						</Table>
 					</div>
 				</motion.div>
 			</AnimatePresence>
 
-			{/* Onay Diyaloğu */}
 			<ConfirmDialog
 				open={confirmOpen}
 				onClose={() => setConfirmOpen(false)}
 				onConfirm={handleConfirm}
-				title="Rol Güncelle"
-				description="Bu kullanıcının rolünü güncellemek istediğinize emin misiniz?"
-				confirmText="Evet, Güncelle"
+				title="Kullanıcı Rolünü Güncelle"
+				description={`Seçili kullanıcının rolünü "${
+					confirmTarget?.role === 'admin'
+						? 'Yönetici'
+						: confirmTarget?.role === 'manager'
+						? 'Müdür'
+						: confirmTarget?.role === 'branch_staff'
+						? 'Şube Personeli'
+						: confirmTarget?.role === 'user'
+						? 'Kullanıcı'
+						: confirmTarget?.role
+				}" olarak değiştirmek istediğinizden emin misiniz?`}
+				confirmText="Evet, Değiştir ve Kaydet"
 				cancelText="Vazgeç"
 			/>
 		</div>

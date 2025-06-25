@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
 
         const supabase = createClient();
         const { error: submissionError } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/auth/callback?next=/update-password`, // Updated redirectTo
+            redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
         });
 
         setLoading(false);
@@ -41,9 +41,9 @@ export default function ForgotPasswordPage() {
         <div className="flex min-h-auto w-full items-center justify-center p-6 md:p-10">
             <Card className="w-full max-w-md">
                 <CardHeader>
-                    <CardTitle>Şifrenizi mi Unuttunuz?</CardTitle>
+                    <CardTitle>Şifreni mi Unuttun?</CardTitle>
                     <CardDescription>
-                        Hesabınızla ilişkili e-posta adresini girin. Size şifrenizi sıfırlamanız için bir bağlantı göndereceğiz.
+                        Hesabınla ilişkili e-posta adresini gir. Şifreni sıfırlaman için sana bir bağlantı göndereceğiz.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -64,14 +64,14 @@ export default function ForgotPasswordPage() {
                             {message && <p className="text-sm text-green-600">{message}</p>}
                             {error && <p className="text-sm text-red-600">{error}</p>}
                             <Button type="submit" className="w-full" disabled={loading}>
-                                {loading ? 'Gönderiliyor...' : 'Şifre Sıfırlama Bağlantısı Gönder'}
+                                {loading ? 'Gönderiliyor...' : 'Şifre Sıırlama Bağlantısı Gönder'}
                             </Button>
                         </div>
                     </form>
                     <div className="mt-4 text-center text-sm">
-                        Şifrenizi hatırlıyor musunuz?{' '}
+                        Şifreni hatırlıyor musun?{' '}
                         <Link href="/login" className="underline">
-                            Giriş yapın
+                            Giriş Yap
                         </Link>
                     </div>
                 </CardContent>

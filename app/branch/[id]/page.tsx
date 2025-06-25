@@ -11,7 +11,7 @@ import { format, isBefore, isSameDay, startOfDay, subDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react'; // useMemo importu zaten vardı
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 type BranchFinancial = {
@@ -49,7 +49,8 @@ export default function BranchPage() {
 	useEffect(() => {
 		if (!branchId) {
 			setIsLoadingData(false);
-			toast.error("Şube ID'si bulunamadı.");
+			toast.error('Şube kimliği bulunamadı. Lütfen tekrar deneyin.');
+			setIsFormDisabled(true); // Formu devre dışı bırak
 			return;
 		}
 
@@ -59,6 +60,7 @@ export default function BranchPage() {
 			setEarnings('');
 			setSummary('');
 			setExistingRecordId(null);
+			setIsFormDisabled(false); // Başlangıçta formu etkinleştir
 
 			const dateStr = format(dateToLoad, 'yyyy-MM-dd');
 
@@ -71,10 +73,11 @@ export default function BranchPage() {
 					.single();
 
 				if (error && error.code !== 'PGRST116') {
+					// PGRST116: Kayıt bulunamadı, bu bir hata değil.
 					throw error;
 				}
 
-				let formShouldBeDisabled = true;
+				let formShouldBeDisabled = true; // Varsayılan olarak devre dışı
 				const allowEditToday = isSameDay(dateToLoad, today);
 				let allowEditYesterday = false;
 
@@ -84,22 +87,21 @@ export default function BranchPage() {
 					setSummary(data.summary || '');
 					setExistingRecordId(data.id);
 					if (allowEditToday) {
-						formShouldBeDisabled = false;
+						formShouldBeDisabled = false; // Bugünse düzenlemeye izin ver
 					}
 				} else {
+					// Kayıt yoksa
 					allowEditYesterday = isSameDay(dateToLoad, yesterday);
 					if (allowEditToday || allowEditYesterday) {
-						formShouldBeDisabled = false;
+						formShouldBeDisabled = false; // Bugün veya dün (kayıt yoksa) ise yeni girişe izin ver
 					}
 				}
 				setIsFormDisabled(formShouldBeDisabled);
 			} catch (error: unknown) {
-				if (error instanceof Error) {
-					toast.error(`Veri çekilirken hata: ${error.message}`);
-				} else {
-					toast.error('Veri çekilirken bilinmeyen bir hata oluştu.');
-				}
-				setIsFormDisabled(true);
+				const errorMessage =
+					error instanceof Error ? error.message : 'bilinmeyen bir hata oluştu';
+				toast.error(`Veri yüklenirken hata: ${errorMessage}`);
+				setIsFormDisabled(true); // Hata durumunda formu devre dışı bırak
 			} finally {
 				setIsLoadingData(false);
 			}
@@ -109,19 +111,19 @@ export default function BranchPage() {
 	}, [selectedDate, branchId, supabase, today, yesterday]);
 
 	const handleDateSelect = (newDate: Date | undefined) => {
-		if (newDate) {
+		if (newDate && !isSameDay(newDate, selectedDate)) {
 			setSelectedDate(startOfDay(newDate));
 		}
 	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (isFormDisabled || isSubmitting) return;
+		if (isFormDisabled || isSubmitting || isLoadingData) return;
 
 		setIsSubmitting(true);
 
 		if (!branchId) {
-			toast.error("Şube ID'si bulunamadı.");
+			toast.error('Şube kimliği geçersiz. İşlem yapılamıyor.');
 			setIsSubmitting(false);
 			return;
 		}
@@ -130,17 +132,21 @@ export default function BranchPage() {
 		const earningsValue = parseFloat(earnings);
 
 		if (isNaN(expensesValue) || expensesValue < 0) {
-			toast.error('Harcamalar geçerli bir pozitif sayı olmalıdır.');
+			toast.error(
+				'Harcamalar alanı boş bırakılamaz ve negatif bir değer alamaz.'
+			);
 			setIsSubmitting(false);
 			return;
 		}
 		if (isNaN(earningsValue) || earningsValue < 0) {
-			toast.error('Kazançlar geçerli bir pozitif sayı olmalıdır.');
+			toast.error(
+				'Kazançlar alanı boş bırakılamaz ve negatif bir değer alamaz.'
+			);
 			setIsSubmitting(false);
 			return;
 		}
 		if (!summary.trim()) {
-			toast.error('Özet alanı boş bırakılamaz.');
+			toast.error('Günün özeti alanı boş bırakılamaz.');
 			setIsSubmitting(false);
 			return;
 		}
@@ -155,8 +161,11 @@ export default function BranchPage() {
 
 		try {
 			if (existingRecordId) {
+				// Güncelleme
 				if (!isSameDay(selectedDate, today)) {
-					toast.error('Sadece bugünün verileri güncellenebilir.');
+					toast.error(
+						'Yalnızca bugünün finansal verileri güncellenebilir.'
+					);
 					setIsSubmitting(false);
 					return;
 				}
@@ -165,67 +174,50 @@ export default function BranchPage() {
 					.update(payload)
 					.eq('id', existingRecordId);
 				if (error) throw error;
-				toast.success('Veri başarıyla güncellendi!', {
-					description:
-						format(selectedDate, 'dd MMMM yyyy', { locale: tr }) +
-						' için kayıt işlendi.',
+				toast.success('Finansal veriler başarıyla güncellendi!', {
+					description: `${format(selectedDate, 'dd MMMM yyyy', {
+						locale: tr,
+					})} tarihli kayıt güncellendi.`,
 				});
 			} else {
-				const { error, data: insertedData } = await supabase // data'yı alalım
+				// Yeni kayıt
+				const { error, data: insertedData } = await supabase
 					.from('branch_financials')
 					.insert([payload])
-					.select() // Eklenen veriyi geri döndür
-					.single(); // Tek kayıt eklediğimiz için
+					.select('id') // Sadece ID'yi al
+					.single();
 				if (error) throw error;
-				toast.success('Veri başarıyla kaydedildi!', {
-					description:
-						format(selectedDate, 'dd MMMM yyyy', { locale: tr }) +
-						' için kayıt işlendi.',
+				toast.success('Finansal veriler başarıyla kaydedildi!', {
+					description: `${format(selectedDate, 'dd MMMM yyyy', {
+						locale: tr,
+					})} tarihli yeni kayıt oluşturuldu.`,
 				});
-				setExpenses('');
-				setEarnings('');
-				setSummary('');
 				if (insertedData) {
-					// Yeni eklenen kaydın ID'sini al
-					setExistingRecordId(insertedData.id);
+					setExistingRecordId(insertedData.id); // Yeni ID'yi sakla
+					// Bugün için yeni kayıt yapıldıysa formu disable etme
+					if (!isSameDay(selectedDate, today)) {
+						setIsFormDisabled(true);
+					}
 				}
 			}
-			// Başarılı işlemden sonra inputları deaktif etme durumunu yeniden değerlendir.
-			// (Eğer bugünse hala açık kalabilir, dünkü yeni girilmişse bugün için disable olabilir)
-			// Veya basitçe loadData'yı tekrar çağırabiliriz.
-			const { data: newData } = await supabase // Bu satır kaldırılabilir eğer insert'ten ID alıyorsak
-				.from('branch_financials')
-				.select('id')
-				.eq('branch_id', branchId)
-				.eq('date', payload.date)
-				.single();
-			if (newData) setExistingRecordId(newData.id);
 		} catch (error: unknown) {
-			if (error instanceof Error) {
-				toast.error(`Hata: ${error.message}`, {
-					description: 'Lütfen girdilerinizi kontrol edin ve tekrar deneyin.',
-				});
-			} else {
-				toast.error('Bilinmeyen bir hata oluştu.', {
-					description: 'Lütfen girdilerinizi kontrol edin ve tekrar deneyin.',
-				});
-			}
+			const errorMessage =
+				error instanceof Error ? error.message : 'bilinmeyen bir hata';
+			toast.error(`İşlem sırasında bir hata oluştu: ${errorMessage}`, {
+				description:
+					'Lütfen girdiğiniz bilgileri kontrol edin ve tekrar deneyin.',
+			});
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
 
 	const isDateDisabledForCalendar = (dateToTest: Date) => {
-		if (isBefore(today, dateToTest)) return true;
-		if (isBefore(dateToTest, subDays(today, 6))) return true;
-		return false;
+		// Gelecek tarihler ve 6 günden eski tarihler devre dışı
+		return isBefore(today, dateToTest) || isBefore(dateToTest, subDays(today, 6));
 	};
 
 	return (
-		// Sayfanın tamamını kaplamak yerine, içeriği bir container ile sarmalayıp
-		// dikeyde padding vererek daha iyi bir görünüm elde edebiliriz.
-		// min-h-screen ve items-center kaldırıldı, justify-center da.
-		// Bunun yerine ana div'e padding ekleyelim.
 		<div className="container mx-auto px-4 py-8 md:py-12">
 			<AnimatePresence>
 				<motion.div
@@ -233,30 +225,22 @@ export default function BranchPage() {
 					animate={{ opacity: 1, y: 0 }}
 					exit={{ opacity: 0, y: -20 }}
 					transition={{ duration: 0.4 }}
-					// Card'ı ortalamak için mx-auto ve max-w-xl veya max-w-2xl kullanılabilir.
 					className="w-full max-w-2xl mx-auto"
 				>
 					<Card className="shadow-xl">
-						{' '}
-						{/* Daha belirgin bir gölge eklendi */}
 						<CardHeader className="pb-4">
-							{' '}
-							{/* Padding ayarlandı */}
 							<CardTitle className="text-2xl md:text-3xl font-semibold text-center">
-								{' '}
-								{/* Punto ve ortalama */}
-								Şube Finansal Özeti
+								Şube Günlük Finansal Özet Girişi
 							</CardTitle>
 							<p className="text-sm text-muted-foreground text-center">
-								{format(selectedDate, 'dd MMMM yyyy', { locale: tr })}
+								{format(selectedDate, 'dd MMMM yyyy, EEEE', { locale: tr })}
 							</p>
 						</CardHeader>
 						<CardContent className="p-6 md:p-8 space-y-6">
-							{/* Takvim ve Formu yan yana veya alt alta daha iyi düzenleyelim */}
 							<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
 								<div className="flex flex-col items-center lg:items-start">
 									<Label className="mb-2 text-base font-medium self-start">
-										Tarih Seçin
+										İşlem Yapılacak Tarihi Seçin:
 									</Label>
 									<Calendar
 										mode="single"
@@ -264,87 +248,96 @@ export default function BranchPage() {
 										onSelect={handleDateSelect}
 										disabled={isDateDisabledForCalendar}
 										initialFocus
-										className="rounded-md border shadow-sm p-3" // Takvime biraz stil
+										className="rounded-md border shadow-sm p-3"
+										locale={tr} // Takvim dilini Türkçe yap
 									/>
+									<p className="text-xs text-muted-foreground mt-2 text-center lg:text-left">
+										Yalnızca bugün ve geçmiş 6 gün için işlem yapabilirsiniz.
+									</p>
 								</div>
 
 								<form onSubmit={handleSubmit} className="space-y-5">
-									{' '}
-									{/* Boşluk artırıldı */}
 									<div>
 										<Label htmlFor="earnings" className="text-base font-medium">
-											Kazançlar (₺)
+											Toplam Kazanç (₺)
 										</Label>
 										<Input
 											id="earnings"
 											type="number"
-											placeholder="Örn: 1500.00"
+											placeholder="Örn: 2500.75"
 											value={earnings}
 											onChange={(e) => setEarnings(e.target.value)}
 											disabled={isFormDisabled || isLoadingData || isSubmitting}
 											step="0.01"
 											min="0"
-											className="mt-1.5 h-10 text-base" // Yükseklik ve punto ayarlandı
+											required
+											className="mt-1.5 h-10 text-base"
 										/>
 									</div>
 									<div>
 										<Label htmlFor="expenses" className="text-base font-medium">
-											Harcamalar (₺)
+											Toplam Harcama (₺)
 										</Label>
 										<Input
 											id="expenses"
 											type="number"
-											placeholder="Örn: 350.50"
+											placeholder="Örn: 750.25"
 											value={expenses}
 											onChange={(e) => setExpenses(e.target.value)}
 											disabled={isFormDisabled || isLoadingData || isSubmitting}
 											step="0.01"
 											min="0"
+											required
 											className="mt-1.5 h-10 text-base"
 										/>
 									</div>
 									<div>
 										<Label htmlFor="summary" className="text-base font-medium">
-											Günün Özeti
+											Günün Özeti ve Notlar
 										</Label>
-										<Input // Textarea olabilirdi ama şimdilik Input
+										<Input
 											id="summary"
 											type="text"
-											placeholder="Yapılan işlemler, notlar..."
+											placeholder="Önemli olaylar, işlem detayları..."
 											value={summary}
 											onChange={(e) => setSummary(e.target.value)}
 											disabled={isFormDisabled || isLoadingData || isSubmitting}
+											required
 											className="mt-1.5 h-10 text-base"
 										/>
 									</div>
 									<Button
 										type="submit"
-										className="w-full h-11 text-md font-semibold" // Buton boyutu ve punto
+										className="w-full h-11 text-md font-semibold"
 										disabled={isFormDisabled || isLoadingData || isSubmitting}
 									>
-										{isSubmitting
+										{isLoadingData
+											? 'Yükleniyor...'
+											: isSubmitting
 											? 'Kaydediliyor...'
 											: existingRecordId && isSameDay(selectedDate, today)
-											? 'Güncelle'
-											: 'Kaydet'}
+											? 'Güncel Kaydı Düzenle'
+											: 'Yeni Kayıt Ekle'}
 									</Button>
 								</form>
 							</div>
 
 							{isLoadingData && (
 								<p className="text-sm text-center text-muted-foreground py-4">
-									Veriler yükleniyor...
+									Seçili tarih için veriler yükleniyor, lütfen bekleyin...
 								</p>
 							)}
 
 							{isFormDisabled &&
 								!isLoadingData &&
-								!isSameDay(selectedDate, today) &&
-								!(isSameDay(selectedDate, yesterday) && !existingRecordId) && (
+								!isSameDay(selectedDate, today) && // Bugün değilse
+								!(
+									isSameDay(selectedDate, yesterday) && !existingRecordId
+								) && ( // Dün ve kayıt yoksa durumu hariç
 									<p className="text-sm text-center text-orange-600 dark:text-orange-500 mt-4 p-3 bg-orange-50 dark:bg-orange-900/30 rounded-md border border-orange-200 dark:border-orange-800">
-										Bu tarih için sadece veri görüntüleyebilirsiniz. <br />
-										Yeni kayıt veya düzenleme için lütfen bugünü veya (veri
-										girilmemişse) dünü seçin.
+										Seçili tarih ({format(selectedDate, 'dd MMMM', { locale: tr })}) için yalnızca veri görüntüleyebilirsiniz. <br />
+										Yeni kayıt eklemek veya düzenleme yapmak için lütfen bugünü
+										ya da (veri girilmemişse) dünü seçin.
 									</p>
 								)}
 						</CardContent>

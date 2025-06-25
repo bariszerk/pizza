@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
 	useAutoSignOut(10);
 	return (
-		<html lang="en" suppressHydrationWarning>
+		<html lang="tr" suppressHydrationWarning>
 			<head />
 			<body>
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem>

@@ -19,7 +19,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input'; // Input importu eksikti, eklendi
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
 	Select,
@@ -71,8 +71,8 @@ export default function AdminBranchesPage() {
 		UserProfile[]
 	>([]);
 
-	const [pageLoading, setPageLoading] = useState<boolean>(true); // Sayfanın genel yüklenme durumu için
-	const [isSubmitting, setIsSubmitting] = useState<boolean>(false); // Form gönderme işlemleri için
+	const [pageLoading, setPageLoading] = useState<boolean>(true);
+	const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 	const [pageError, setPageError] = useState<string | null>(null);
 	const [formError, setFormError] = useState<string | null>(null);
 
@@ -114,7 +114,6 @@ export default function AdminBranchesPage() {
 
 	const fetchData = useCallback(
 		async (userId: string, userRole: string) => {
-			// setPageLoading(true); // Bu, initializePage tarafından yönetilecek
 			setPageError(null);
 			try {
 				const { data: managersData, error: managersError } = await supabase
@@ -195,11 +194,11 @@ export default function AdminBranchesPage() {
 				const message =
 					err instanceof Error
 						? err.message
-						: 'Bilinmeyen bir veri çekme hatası oluştu.';
+						: 'Veri çekme sırasında bilinmeyen bir hata oluştu.';
 				setPageError(message);
-				console.error(err);
+				console.error('Veri çekme hatası:', err);
 			} finally {
-				setPageLoading(false); // Veri çekme işlemi bittiğinde sayfa yüklenmesi biter
+				setPageLoading(false);
 			}
 		},
 		[supabase]
@@ -213,7 +212,7 @@ export default function AdminBranchesPage() {
 				data: { user },
 			} = await supabase.auth.getUser();
 			if (!user) {
-				setPageError('Lütfen giriş yapın.');
+				setPageError('Lütfen önce giriş yapın.');
 				setCurrentUserRole(null);
 				setPageLoading(false);
 				return;
@@ -227,14 +226,16 @@ export default function AdminBranchesPage() {
 				.single();
 
 			if (profileError || !profile) {
-				setPageError('Kullanıcı profili bulunamadı veya yetkiniz yok.');
+				setPageError(
+					'Kullanıcı profili bulunamadı veya bu sayfayı görüntüleme yetkiniz yok.'
+				);
 				setCurrentUserRole(null);
 				setPageLoading(false);
 				return;
 			}
 
 			if (profile.role !== 'admin' && profile.role !== 'manager') {
-				setPageError('Bu sayfaya erişim yetkiniz yok.');
+				setPageError('Bu sayfaya erişim yetkiniz bulunmamaktadır.');
 				setCurrentUserRole(profile.role);
 				setPageLoading(false);
 				return;
@@ -248,11 +249,11 @@ export default function AdminBranchesPage() {
 	const handleAddBranch = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (currentUserRole !== 'admin') {
-			setFormError('Sadece adminler şube ekleyebilir.');
+			setFormError('Yalnızca yöneticiler şube ekleyebilir.');
 			return;
 		}
 		if (!newBranchName.trim()) {
-			setFormError('Şube adı boş olamaz.');
+			setFormError('Şube adı boş bırakılamaz.');
 			return;
 		}
 		setIsSubmitting(true);
@@ -268,7 +269,9 @@ export default function AdminBranchesPage() {
 				await fetchData(currentUserId, currentUserRole);
 		} catch (err: unknown) {
 			setFormError(
-				err instanceof Error ? err.message : 'Şube eklenirken hata oluştu.'
+				err instanceof Error
+					? err.message
+					: 'Şube eklenirken bir hata oluştu.'
 			);
 		} finally {
 			setIsSubmitting(false);
@@ -280,12 +283,12 @@ export default function AdminBranchesPage() {
 		setConfirmDialogProps({
 			title: 'Şubeyi Sil',
 			description:
-				'Bu şubeyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz, şubeye atanmış tüm yönetici ve personel bağlantıları da kaldırılır.',
+				'Bu şubeyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz. Şubeye atanmış tüm yönetici ve personel bağlantıları da kaldırılacaktır.',
 			confirmText: 'Evet, Sil',
 			onConfirm: async () => {
 				setConfirmDialogOpen(false);
 				setIsSubmitting(true);
-				setPageError(null); // Silme işlemi için de isSubmitting kullanılabilir
+				setPageError(null);
 				try {
 					const { error: assignDelErr } = await supabase
 						.from('manager_branch_assignments')
@@ -293,7 +296,8 @@ export default function AdminBranchesPage() {
 						.eq('branch_id', branchId);
 					if (assignDelErr)
 						throw new Error(
-							'Yönetici atamaları silinirken hata: ' + assignDelErr.message
+							'Yönetici atamaları silinirken bir hata oluştu: ' +
+								assignDelErr.message
 						);
 					const { error: staffUpdErr } = await supabase
 						.from('profiles')
@@ -301,7 +305,7 @@ export default function AdminBranchesPage() {
 						.eq('staff_branch_id', branchId);
 					if (staffUpdErr)
 						throw new Error(
-							'Personel şube bağlantıları güncellenirken hata: ' +
+							'Personel şube bağlantıları güncellenirken bir hata oluştu: ' +
 								staffUpdErr.message
 						);
 					const { error: branchDelErr } = await supabase
@@ -309,14 +313,16 @@ export default function AdminBranchesPage() {
 						.delete()
 						.eq('id', branchId);
 					if (branchDelErr)
-						throw new Error('Şube silinirken hata: ' + branchDelErr.message);
+						throw new Error(
+							'Şube silinirken bir hata oluştu: ' + branchDelErr.message
+						);
 					if (currentUserId && currentUserRole)
 						await fetchData(currentUserId, currentUserRole);
 				} catch (err: unknown) {
 					setPageError(
 						err instanceof Error
 							? err.message
-							: 'Şube silinirken bir hata oluştu.'
+							: 'Şube silinirken bilinmeyen bir hata oluştu.'
 					);
 				} finally {
 					setIsSubmitting(false);
@@ -340,7 +346,7 @@ export default function AdminBranchesPage() {
 			!selectedBranchForManagerAssignment ||
 			!selectedManagerToAssign
 		) {
-			setFormError('Şube ve yönetici seçilmelidir.');
+			setFormError('Lütfen bir şube ve yönetici seçin.');
 			return;
 		}
 		setIsSubmitting(true);
@@ -353,16 +359,20 @@ export default function AdminBranchesPage() {
 					manager_id: selectedManagerToAssign,
 				});
 			if (assignError) {
-				if (assignError.code === '23505')
-					throw new Error('Bu yönetici zaten bu şubeye atanmış.');
+				if (assignError.code === '23505') {
+					throw new Error('Bu yönetici zaten bu şubeye atanmış durumda.');
+				}
 				throw assignError;
 			}
-			if (currentUserId && currentUserRole)
+			if (currentUserId && currentUserRole) {
 				await fetchData(currentUserId, currentUserRole);
+			}
 			setShowAddManagerModal(false);
 		} catch (err: unknown) {
 			setFormError(
-				err instanceof Error ? err.message : 'Yönetici atanırken hata oluştu.'
+				err instanceof Error
+					? err.message
+					: 'Yönetici atanırken bir hata oluştu.'
 			);
 		} finally {
 			setIsSubmitting(false);
@@ -375,10 +385,10 @@ export default function AdminBranchesPage() {
 	) => {
 		if (currentUserRole !== 'admin') return;
 		setConfirmDialogProps({
-			title: 'Yöneticiyi Şubeden Çıkar',
+			title: 'Yöneticiyi Şubeden Ayır',
 			description:
-				'Bu yöneticiyi şubeden çıkarmak istediğinizden emin misiniz?',
-			confirmText: 'Evet, Çıkar',
+				'Bu yöneticiyi şubeden ayırmak istediğinizden emin misiniz?',
+			confirmText: 'Evet, Ayır',
 			onConfirm: async () => {
 				setConfirmDialogOpen(false);
 				setIsSubmitting(true);
@@ -395,7 +405,7 @@ export default function AdminBranchesPage() {
 					setPageError(
 						err instanceof Error
 							? err.message
-							: 'Yönetici şubeden çıkarılırken hata.'
+							: 'Yönetici şubeden ayrılırken bir hata oluştu.'
 					);
 				} finally {
 					setIsSubmitting(false);
@@ -409,7 +419,7 @@ export default function AdminBranchesPage() {
 		setSelectedBranchForStaffAssignment(branch);
 		setSelectedUserToAssignAsStaff(null);
 		setFormError(null);
-		setIsSubmitting(true); // Modal içeriği yüklenirken
+		setIsSubmitting(true);
 		try {
 			const { data: staffData, error: staffError } = await supabase
 				.from('profiles')
@@ -420,7 +430,9 @@ export default function AdminBranchesPage() {
 			setCurrentStaffOfSelectedBranch(staffData || []);
 		} catch (err: unknown) {
 			setFormError(
-				err instanceof Error ? err.message : 'Şube personeli çekilemedi.'
+				err instanceof Error
+					? err.message
+					: 'Şube personeli bilgileri çekilirken bir hata oluştu.'
 			);
 			setCurrentStaffOfSelectedBranch([]);
 		} finally {
@@ -431,14 +443,14 @@ export default function AdminBranchesPage() {
 
 	const handleAssignStaffToBranch = async () => {
 		if (!selectedBranchForStaffAssignment || !selectedUserToAssignAsStaff) {
-			setFormError('Şube ve personel seçilmelidir.');
+			setFormError('Lütfen bir şube ve personel seçin.');
 			return;
 		}
 		const userToAssign = allUsersForStaffAssignment.find(
 			(u) => u.id === selectedUserToAssignAsStaff
 		);
 		if (!userToAssign) {
-			setFormError('Seçilen kullanıcı bulunamadı.');
+			setFormError('Seçilen kullanıcı sistemde bulunamadı.');
 			return;
 		}
 		if (
@@ -449,7 +461,7 @@ export default function AdminBranchesPage() {
 			setFormError(
 				`${
 					userToAssign.first_name || userToAssign.email
-				} zaten başka bir şubeye atanmış.`
+				} adlı kullanıcı zaten başka bir şubeye atanmış.`
 			);
 			return;
 		}
@@ -458,7 +470,7 @@ export default function AdminBranchesPage() {
 			!(userToAssign.role === 'branch_staff' && !userToAssign.staff_branch_id)
 		) {
 			setFormError(
-				`Sadece 'user' veya şubesiz 'branch_staff' rolündeki kullanıcılar personel olarak atanabilir.`
+				`Yalnızca 'user' rolündeki veya herhangi bir şubeye atanmamış 'branch_staff' rolündeki kullanıcılar personel olarak atanabilir.`
 			);
 			return;
 		}
@@ -473,21 +485,28 @@ export default function AdminBranchesPage() {
 				})
 				.eq('id', selectedUserToAssignAsStaff);
 			if (assignError) throw assignError;
-			if (currentUserId && currentUserRole)
-				await fetchData(currentUserId, currentUserRole);
+
+			// Veriyi yeniden çekmek yerine state'i doğrudan güncelle
+			setAllUsersForStaffAssignment((prev) =>
+				prev.filter((u) => u.id !== selectedUserToAssignAsStaff)
+			);
 			const updatedStaffMember = {
 				...userToAssign,
 				role: 'branch_staff',
 				staff_branch_id: selectedBranchForStaffAssignment.id,
 			} as UserProfile;
-			setCurrentStaffOfSelectedBranch((prev) => [
-				...prev.filter((s) => s.id !== updatedStaffMember.id),
-				updatedStaffMember,
-			]);
+			setCurrentStaffOfSelectedBranch((prev) => [...prev, updatedStaffMember]);
+
+			// Genel şube listesini de güncelle (eğer gerekiyorsa ve performans sorunu yaratmıyorsa)
+			if (currentUserId && currentUserRole) {
+				await fetchData(currentUserId, currentUserRole);
+			}
 			setShowAssignStaffModal(false);
 		} catch (err: unknown) {
 			setFormError(
-				err instanceof Error ? err.message : 'Personel atama hatası.'
+				err instanceof Error
+					? err.message
+					: 'Personele şube atanırken bir hata oluştu.'
 			);
 		} finally {
 			setIsSubmitting(false);
@@ -497,9 +516,9 @@ export default function AdminBranchesPage() {
 	const handleRemoveStaffFromBranch = async (staffIdToRemove: string) => {
 		if (!selectedBranchForStaffAssignment) return;
 		setConfirmDialogProps({
-			title: 'Personeli Şubeden Çıkar',
-			description: `Bu personeli "${selectedBranchForStaffAssignment.name}" şubesinden çıkarmak istediğinizden emin misiniz? Bu kişi artık sisteme günlük veriler giremeyecektir.`,
-			confirmText: 'Evet, Çıkar',
+			title: 'Personeli Şubeden Ayır',
+			description: `Bu personeli "${selectedBranchForStaffAssignment.name}" şubesinden ayırmak istediğinizden emin misiniz? Bu kişi artık bu şube için sisteme günlük veri girişi yapamayacaktır.`,
+			confirmText: 'Evet, Ayır',
 			onConfirm: async () => {
 				setConfirmDialogOpen(false);
 				setIsSubmitting(true);
@@ -510,14 +529,29 @@ export default function AdminBranchesPage() {
 						.update({ role: 'user', staff_branch_id: null })
 						.eq('id', staffIdToRemove);
 					if (updateError) throw updateError;
-					if (currentUserId && currentUserRole)
-						await fetchData(currentUserId, currentUserRole);
+
+					// Veriyi yeniden çekmek yerine state'i doğrudan güncelle
+					const removedStaff = currentStaffOfSelectedBranch.find(
+						(s) => s.id === staffIdToRemove
+					);
+					if (removedStaff) {
+						setAllUsersForStaffAssignment((prev) => [
+							...prev,
+							{ ...removedStaff, role: 'user', staff_branch_id: null },
+						]);
+					}
 					setCurrentStaffOfSelectedBranch((prev) =>
 						prev.filter((s) => s.id !== staffIdToRemove)
 					);
+
+					if (currentUserId && currentUserRole) {
+						await fetchData(currentUserId, currentUserRole);
+					}
 				} catch (err: unknown) {
 					setFormError(
-						err instanceof Error ? err.message : 'Personel çıkarma hatası.'
+						err instanceof Error
+							? err.message
+							: 'Personel şubeden ayrılırken bir hata oluştu.'
 					);
 				} finally {
 					setIsSubmitting(false);
@@ -533,21 +567,22 @@ export default function AdminBranchesPage() {
 	if (pageLoading && !currentUserRole) {
 		return (
 			<div className="flex items-center justify-center py-20">
-				<p>Kullanıcı bilgileri yükleniyor...</p>
+				<p>Kullanıcı bilgileri ve yetkiler yükleniyor, lütfen bekleyin...</p>
 			</div>
 		);
 	}
 	if (pageError) {
 		return (
 			<div className="container mx-auto px-4 py-6 text-destructive">
-				{pageError}
+				Hata: {pageError}
 			</div>
 		);
 	}
 	if (!currentUserRole && !pageLoading) {
 		return (
 			<div className="container mx-auto px-4 py-6">
-				Yetkili rol yüklenemedi veya giriş yapılmamış.
+				Yetkili kullanıcı rolü yüklenemedi veya geçerli bir oturum bulunamadı.
+				Lütfen tekrar giriş yapmayı deneyin.
 			</div>
 		);
 	}
@@ -565,32 +600,33 @@ export default function AdminBranchesPage() {
 					{currentUserRole === 'admin' && (
 						<Card className="mb-8">
 							<CardHeader>
-								<CardTitle>Yeni Şube Ekle</CardTitle>
+								<CardTitle>Yeni Şube Tanımla</CardTitle>
 								<CardDescription>
-									Yeni bir şube oluşturmak için bilgileri girin.
+									Yeni bir şube oluşturmak için lütfen aşağıdaki bilgileri
+									eksiksiz girin.
 								</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<form onSubmit={handleAddBranch} className="space-y-4">
 									<div className="grid gap-2">
-										<Label htmlFor="branch-name">Şube Adı</Label>
+										<Label htmlFor="branch-name">Şube Adı (*)</Label>
 										<Input
 											id="branch-name"
 											value={newBranchName}
 											onChange={(e) => setNewBranchName(e.target.value)}
-											placeholder="Örn: Adana Çarşı Şubesi"
+											placeholder="Örnek: Merkez Şube, Ankara Şubesi"
 											required
 										/>
 									</div>
 									<div className="grid gap-2">
 										<Label htmlFor="branch-address">
-											Şube Adresi (Opsiyonel)
+											Şube Adresi (İsteğe Bağlı)
 										</Label>
 										<Input
 											id="branch-address"
 											value={newBranchAddress}
 											onChange={(e) => setNewBranchAddress(e.target.value)}
-											placeholder="Örn: Atatürk Cad. No:123"
+											placeholder="Örnek: Atatürk Cad. No:123, Çankaya/Ankara"
 										/>
 									</div>
 									{formError && (
@@ -602,7 +638,7 @@ export default function AdminBranchesPage() {
 											pageLoading || isSubmitting || !newBranchName.trim()
 										}
 									>
-										{isSubmitting ? 'Ekleniyor...' : 'Şube Ekle'}
+										{isSubmitting ? 'Ekleniyor...' : 'Yeni Şube Ekle'}
 									</Button>
 								</form>
 							</CardContent>
@@ -613,39 +649,42 @@ export default function AdminBranchesPage() {
 						<CardHeader>
 							<CardTitle>
 								{currentUserRole === 'manager'
-									? 'Sorumlu Olduğum Şubeler'
+									? 'Yönettiğim Şubeler'
 									: 'Tüm Şubeler'}
 							</CardTitle>
 							<CardDescription>
 								{currentUserRole === 'manager'
-									? 'Sorumlu olduğunuz şubelere personel atayın.'
-									: 'Şubeleri yönetin, yönetici ve personel atayın.'}
+									? 'Sorumlu olduğunuz şubeleri görüntüleyebilir ve bu şubelere personel atayabilirsiniz.'
+									: 'Mevcut şubeleri yönetebilir, şubelere yönetici ve personel atayabilirsiniz.'}
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
 							{pageLoading && branchesToDisplay.length === 0 ? (
-								<p>Şubeler yükleniyor...</p>
+								<p>Şube listesi yükleniyor, lütfen bekleyin...</p>
 							) : branchesToDisplay.length === 0 && !pageLoading ? (
 								<p>
 									{currentUserRole === 'manager'
-										? 'Henüz sorumlu olduğunuz bir şube bulunmuyor.'
-										: 'Henüz şube eklenmemiş.'}
+										? 'Henüz sorumlu olduğunuz herhangi bir şube bulunmamaktadır.'
+										: 'Sistemde kayıtlı herhangi bir şube bulunamadı. Yukarıdaki formdan yeni şube ekleyebilirsiniz.'}
 								</p>
 							) : (
 								<div className="overflow-x-auto">
-									<Table className="min-w-[800px]">
+									<Table className="min-w-[900px]">
 										<TableHeader>
 											<TableRow>
-												<TableHead className="w-[20%]">Ad</TableHead>
+												<TableHead className="w-[20%]">Şube Adı</TableHead>
 												<TableHead className="w-[25%]">Adres</TableHead>
 												{currentUserRole === 'admin' && (
 													<TableHead className="w-[25%]">
 														Atanmış Yöneticiler
 													</TableHead>
 												)}
+												<TableHead className="w-[15%]">
+													Personel
+												</TableHead>
 												{currentUserRole === 'admin' && (
 													<TableHead className="text-right w-[15%]">
-														İşlemler
+														Sil
 													</TableHead>
 												)}
 											</TableRow>
@@ -657,7 +696,7 @@ export default function AdminBranchesPage() {
 														{branch.name}
 													</TableCell>
 													<TableCell>
-														{branch.address || 'Belirtilmemiş'}
+														{branch.address || 'Adres belirtilmemiş'}
 													</TableCell>
 													{currentUserRole === 'admin' && (
 														<TableCell>
@@ -667,21 +706,23 @@ export default function AdminBranchesPage() {
 																	{branch.assigned_managers.map((manager) => (
 																		<li
 																			key={manager.id}
-																			className="text-xs flex items-center justify-between"
+																			className="text-xs flex items-center justify-between group"
 																		>
-																			{manager.first_name} {manager.last_name} (
-																			{manager.email})
+																			<span>
+																				{manager.first_name} {manager.last_name} (
+																				{manager.email})
+																			</span>
 																			<Button
 																				variant="ghost"
 																				size="icon"
-																				className="h-6 w-6 ml-2"
+																				className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
 																				onClick={() =>
 																					handleRemoveManagerFromBranch(
 																						branch.id,
 																						manager.id
 																					)
 																				}
-																				title="Yöneticiyi Çıkar"
+																				title="Bu yöneticiyi şubeden ayır"
 																			>
 																				<UserMinusIcon className="h-4 w-4 text-destructive" />
 																			</Button>
@@ -690,7 +731,7 @@ export default function AdminBranchesPage() {
 																</ul>
 															) : (
 																<span className="text-xs text-muted-foreground">
-																	Yönetici Atanmamış
+																	Yönetici atanmamış
 																</span>
 															)}
 															<Button
@@ -699,7 +740,7 @@ export default function AdminBranchesPage() {
 																className="mt-2 text-xs"
 																onClick={() => openAssignManagerModal(branch)}
 															>
-																<UserPlusIcon className="h-3 w-3 mr-1" />{' '}
+																<UserPlusIcon className="h-3 w-3 mr-1" />
 																Yönetici Ata
 															</Button>
 														</TableCell>
@@ -709,29 +750,30 @@ export default function AdminBranchesPage() {
 															{branch.assigned_staff
 																? branch.assigned_staff.length
 																: 0}{' '}
-															personel
+															personel kayıtlı
 														</span>
 														<Button
 															variant="outline"
 															size="sm"
-															className="text-xs" // w-full kaldırıldı, buton artık içeriğine göre boyutlanacak
+															className="text-xs"
 															onClick={() => openAssignStaffModal(branch)}
 														>
-															Personel Yönet
+															Personel Yönetimi
 														</Button>
 													</TableCell>
-													<TableCell className="text-right">
-														{currentUserRole === 'admin' && (
+													{currentUserRole === 'admin' && (
+														<TableCell className="text-right">
 															<Button
 																variant="destructive"
 																size="sm"
 																onClick={() => handleDeleteBranch(branch.id)}
 																disabled={isSubmitting}
+																title="Şubeyi Kalıcı Olarak Sil"
 															>
 																<Trash2Icon className="h-4 w-4" />
 															</Button>
-														)}
-													</TableCell>
+														</TableCell>
+													)}
 												</TableRow>
 											))}
 										</TableBody>
@@ -753,20 +795,23 @@ export default function AdminBranchesPage() {
 				>
 					<DialogContent className="sm:max-w-[525px]">
 						<DialogHeader>
-							<DialogTitle>{`"${selectedBranchForStaffAssignment.name}" Personel Yönetimi`}</DialogTitle>
+							<DialogTitle>{`"${selectedBranchForStaffAssignment.name}" Şubesi Personel Yönetimi`}</DialogTitle>
 							<DialogDescription>
-								Bu şubeye personel atayın veya mevcut personeli yönetin.
+								Bu şubeye yeni personel atayabilir veya mevcut personeli
+								şubeden ayırabilirsiniz.
 							</DialogDescription>
 						</DialogHeader>
 						<div className="py-4 space-y-4">
 							<div>
-								<h4 className="font-medium mb-2 text-sm">Mevcut Personel:</h4>
+								<h4 className="font-medium mb-2 text-sm">
+									Şubeye Kayıtlı Mevcut Personel:
+								</h4>
 								{currentStaffOfSelectedBranch.length > 0 ? (
-									<ul className="space-y-1 text-sm max-h-40 overflow-y-auto">
+									<ul className="space-y-1 text-sm max-h-40 overflow-y-auto border rounded-md p-2">
 										{currentStaffOfSelectedBranch.map((staff) => (
 											<li
 												key={staff.id}
-												className="flex justify-between items-center p-1.5 border-b hover:bg-muted/50 rounded"
+												className="flex justify-between items-center p-1.5 border-b last:border-b-0 hover:bg-muted/50 rounded"
 											>
 												<span>
 													{staff.first_name} {staff.last_name} ({staff.email})
@@ -777,6 +822,7 @@ export default function AdminBranchesPage() {
 													className="h-7 w-7 text-destructive hover:text-destructive"
 													onClick={() => handleRemoveStaffFromBranch(staff.id)}
 													disabled={isSubmitting}
+													title="Bu personeli şubeden ayır"
 												>
 													<Trash2Icon className="h-4 w-4" />
 												</Button>
@@ -785,7 +831,7 @@ export default function AdminBranchesPage() {
 									</ul>
 								) : (
 									<p className="text-sm text-muted-foreground">
-										Bu şubede kayıtlı personel yok.
+										Bu şubede henüz kayıtlı personel bulunmamaktadır.
 									</p>
 								)}
 							</div>
@@ -793,16 +839,16 @@ export default function AdminBranchesPage() {
 							<div>
 								<Label
 									htmlFor="user-select-staff-modal"
-									className="font-medium text-sm"
+									className="font-medium text-sm block mb-1"
 								>
-									Yeni Personel Ata:
+									Şubeye Yeni Personel Ata:
 								</Label>
 								<Select
 									onValueChange={setSelectedUserToAssignAsStaff}
 									value={selectedUserToAssignAsStaff || undefined}
 								>
-									<SelectTrigger id="user-select-staff-modal" className="mt-1">
-										<SelectValue placeholder="Bir kullanıcı seçin..." />
+									<SelectTrigger id="user-select-staff-modal">
+										<SelectValue placeholder="Atanacak bir kullanıcı seçin..." />
 									</SelectTrigger>
 									<SelectContent>
 										{allUsersForStaffAssignment
@@ -817,9 +863,8 @@ export default function AdminBranchesPage() {
 											)
 											.map((user) => (
 												<SelectItem key={user.id} value={user.id}>
-													{' '}
-													{user.first_name} {user.last_name} ({user.email}) -
-													Rol: {user.role}{' '}
+													{user.first_name} {user.last_name} ({user.email})
+													- Mevcut Rol: {user.role}
 												</SelectItem>
 											))}
 										{allUsersForStaffAssignment.filter(
@@ -828,8 +873,8 @@ export default function AdminBranchesPage() {
 													(u.role === 'branch_staff' && !u.staff_branch_id)) &&
 												!currentStaffOfSelectedBranch.find((s) => s.id === u.id)
 										).length === 0 && (
-											<div className="p-2 text-sm text-muted-foreground">
-												Atanacak uygun kullanıcı bulunamadı.
+											<div className="p-2 text-sm text-muted-foreground text-center">
+												Şu anda atanabilecek uygun kullanıcı bulunamadı.
 											</div>
 										)}
 									</SelectContent>
@@ -842,14 +887,14 @@ export default function AdminBranchesPage() {
 						<DialogFooter>
 							<DialogClose asChild>
 								<Button variant="outline" disabled={isSubmitting}>
-									Kapat
+									İptal
 								</Button>
 							</DialogClose>
 							<Button
 								onClick={handleAssignStaffToBranch}
 								disabled={!selectedUserToAssignAsStaff || isSubmitting}
 							>
-								{isSubmitting ? 'Atanıyor...' : 'Personeli Ata'}
+								{isSubmitting ? 'Atanıyor...' : 'Seçili Personeli Ata'}
 							</Button>
 						</DialogFooter>
 					</DialogContent>
@@ -859,21 +904,22 @@ export default function AdminBranchesPage() {
 			{currentUserRole === 'admin' &&
 				showAddManagerModal &&
 				selectedBranchForManagerAssignment && (
-					<ConfirmDialog // children prop'unu kaldırıp, içeriği etiketler arasına alın
+					<ConfirmDialog
 						open={showAddManagerModal}
 						onClose={() => {
 							setShowAddManagerModal(false);
-							setFormError(null); // Modal kapanınca formu/hatayı temizle
+							setFormError(null);
 						}}
 						onConfirm={handleAssignManagerToBranch}
 						title={`"${selectedBranchForManagerAssignment.name}" Şubesine Yönetici Ata`}
-						description="Aşağıdaki yöneticilerden birini seçerek bu şubeye atayın."
-						confirmText="Yöneticiyi Ata"
-						cancelText="Vazgeç"
+						description="Lütfen aşağıdaki listeden bir yönetici seçerek bu şubeye atayın. Bir şubeye birden fazla yönetici atanabilir."
+						confirmText="Seçili Yöneticiyi Ata"
+						cancelText="İptal"
 					>
-						{/* Children içeriği buraya taşındı */}
 						<div className="py-4 space-y-2">
-							<Label htmlFor="manager-select-modal">Yönetici Seçin</Label>
+							<Label htmlFor="manager-select-modal">
+								Atanacak Yöneticiyi Seçin:
+							</Label>
 							<Select
 								onValueChange={setSelectedManagerToAssign}
 								value={selectedManagerToAssign || undefined}
@@ -901,9 +947,9 @@ export default function AdminBranchesPage() {
 												(assigned) => assigned.id === manager.id
 											)
 									).length === 0 && (
-										<div className="p-2 text-sm text-muted-foreground">
-											Atanacak uygun yönetici bulunamadı veya tümü zaten
-											atanmış.
+										<div className="p-2 text-sm text-muted-foreground text-center">
+											Atanacak uygun yönetici bulunamadı veya tüm yöneticiler
+											zaten bu şubeye atanmış.
 										</div>
 									)}
 								</SelectContent>
@@ -920,7 +966,8 @@ export default function AdminBranchesPage() {
 				title={confirmDialogProps.title}
 				description={confirmDialogProps.description}
 				onConfirm={confirmDialogProps.onConfirm}
-				confirmText={confirmDialogProps.confirmText}
+				confirmText={confirmDialogProps.confirmText || 'Onayla'}
+				cancelText="Vazgeç"
 			/>
 		</div>
 	);

@@ -21,7 +21,7 @@ export function TopNavbar() {
 	const baseNavLinks = [
 		{
 			href: '/dashboard',
-			label: 'Dashboard',
+			label: 'Kontrol Paneli',
 			roles: ['manager', 'admin'],
 		},
 		{
@@ -73,7 +73,7 @@ export function TopNavbar() {
 					<button
 						className="lg:hidden p-2 focus:outline-none"
 						onClick={toggleMobileMenu}
-						aria-label="Open Menu"
+						aria-label="Menüyü Aç"
 					>
 						{isMobileMenuOpen ? (
 							<XIcon className="h-6 w-6" />
