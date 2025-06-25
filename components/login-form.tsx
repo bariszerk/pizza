@@ -75,12 +75,12 @@ export function LoginForm({
 							<div className="grid gap-3">
 								<div className="flex items-center">
 									<Label htmlFor="password">Şifre</Label>
-									<a
-										href="#"
+									<Link
+										href="/forgot-password"
 										className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
 									>
 										Şifrenizi mi unuttunuz?
-									</a>
+									</Link>
 								</div>
 								<Input
 									id="password"
