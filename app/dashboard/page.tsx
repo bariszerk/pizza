@@ -100,6 +100,9 @@ type DailyDetailData = {
 };
 
 const LOCAL_STORAGE_BRANCH_KEY = 'lastSelectedBranchId'; // Bu anahtar değişmemeli
+const LOCAL_STORAGE_DATE_FROM_KEY = 'lastSelectedDateFrom';
+const LOCAL_STORAGE_DATE_TO_KEY = 'lastSelectedDateTo';
+const LOCAL_STORAGE_PRESET_KEY = 'lastSelectedPreset';
 
 function DashboardContent() {
 	const router = useRouter();
@@ -120,6 +123,7 @@ function DashboardContent() {
 		const toParam = searchParams.get('to');
 		const presetParam = searchParams.get('preset');
 
+		// 1. URL parametrelerini kontrol et
 		if (presetParam && presetParam !== 'custom') {
 			const preset = PRESETS_LOCAL.find((p) => p.value === presetParam);
 			if (preset) return preset.getDateRange();
@@ -132,10 +136,33 @@ function DashboardContent() {
 					: endOfDay(fromDate);
 			return { from: fromDate, to: toDate };
 		}
-		const defaultPreset = PRESETS_LOCAL.find((p) => p.value === 'last_7_days'); // Son 7 gün varsayılan
+
+		// 2. Local Storage'ı kontrol et
+		if (typeof window !== 'undefined') {
+			const storedFrom = localStorage.getItem(LOCAL_STORAGE_DATE_FROM_KEY);
+			const storedTo = localStorage.getItem(LOCAL_STORAGE_DATE_TO_KEY);
+			const storedPreset = localStorage.getItem(LOCAL_STORAGE_PRESET_KEY);
+
+			if (storedPreset && storedPreset !== 'custom') {
+				const preset = PRESETS_LOCAL.find((p) => p.value === storedPreset);
+				if (preset) return preset.getDateRange();
+			}
+
+			if (storedFrom && isValid(parseISO(storedFrom))) {
+				const fromDate = startOfDay(parseISO(storedFrom));
+				const toDate =
+					storedTo && isValid(parseISO(storedTo))
+						? endOfDay(parseISO(storedTo))
+						: endOfDay(fromDate);
+				return { from: fromDate, to: toDate };
+			}
+		}
+
+		// 3. Varsayılan değere dön
+		const defaultPreset = PRESETS_LOCAL.find((p) => p.value === 'last_30_days'); // Son 30 gün varsayılan
 		return defaultPreset
 			? defaultPreset.getDateRange()
-			: { from: subDays(today, 6), to: today };
+			: { from: subDays(today, 29), to: today };
 	}, [searchParams, today]);
 
 	const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
@@ -387,6 +414,7 @@ function DashboardContent() {
 		getInitialDateRange,
 		searchParams,
 		updateURL,
+		fetchDashboardData, // fetchDashboardData eklendi
 		setDashboardData,
 		setError,
 		setPageLoading,
@@ -434,8 +462,43 @@ function DashboardContent() {
 			setSelectedDateRange(range);
 			setCurrentPresetValue(preset);
 			updateURL(range, preset, selectedBranchId);
+
+			if (typeof window !== 'undefined') {
+				if (range?.from && isValid(range.from)) {
+					localStorage.setItem(
+						LOCAL_STORAGE_DATE_FROM_KEY,
+						format(range.from, 'yyyy-MM-dd')
+					);
+				} else {
+					localStorage.removeItem(LOCAL_STORAGE_DATE_FROM_KEY);
+				}
+				if (range?.to && isValid(range.to)) {
+					localStorage.setItem(
+						LOCAL_STORAGE_DATE_TO_KEY,
+						format(range.to, 'yyyy-MM-dd')
+					);
+				} else {
+					localStorage.removeItem(LOCAL_STORAGE_DATE_TO_KEY);
+				}
+				if (preset) {
+					localStorage.setItem(LOCAL_STORAGE_PRESET_KEY, preset);
+				} else {
+					localStorage.removeItem(LOCAL_STORAGE_PRESET_KEY);
+				}
+			}
+
+			// Fetch data with the new date range
+			if (selectedBranchId && range?.from) {
+				fetchDashboardData(selectedBranchId, range);
+			} else if (selectedBranchId && preset) {
+				// If range.from is not available but preset is, try to get range from preset
+				const presetObject = PRESETS_LOCAL.find(p => p.value === preset);
+				if (presetObject) {
+					fetchDashboardData(selectedBranchId, presetObject.getDateRange());
+				}
+			}
 		},
-		[updateURL, selectedBranchId]
+		[updateURL, selectedBranchId, fetchDashboardData] // fetchDashboardData eklendi
 	);
 
 	const handleBranchChange = useCallback(
@@ -450,8 +513,16 @@ function DashboardContent() {
 					localStorage.removeItem(LOCAL_STORAGE_BRANCH_KEY);
 			}
 			updateURL(selectedDateRange, currentPresetValue, branchId);
+			if (branchId && selectedDateRange?.from) {
+				fetchDashboardData(branchId, selectedDateRange);
+			} else if (branchId && currentPresetValue) {
+				const presetObject = PRESETS_LOCAL.find(p => p.value === currentPresetValue);
+				if (presetObject) {
+					fetchDashboardData(branchId, presetObject.getDateRange());
+				}
+			}
 		},
-		[updateURL, selectedDateRange, currentPresetValue]
+		[updateURL, selectedDateRange, currentPresetValue, fetchDashboardData] // fetchDashboardData eklendi
 	);
 
 	// Removed effect that automatically calls updateURL on dependency changes
