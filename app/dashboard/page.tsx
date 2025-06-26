@@ -153,7 +153,6 @@ function DashboardContent() {
 	const [dashboardData, setDashboardData] = useState<DashboardData | null>(
 		null
 	);
-	// const [loading, setLoading] = useState(true); // pageLoading ile birleştirildi
 	const [error, setError] = useState<string | null>(null); // Page specific errors
 	const [pageLoading, setPageLoading] = useState(true); // Page specific loading
 
@@ -199,7 +198,8 @@ function DashboardContent() {
 			const rangeToUse = newRange || currentSelectedDateRangeRef.current;
 			const presetToUse = newPreset || currentPresetValueRef.current;
 
-			if (rangeToUse?.from) params.set('from', format(rangeToUse.from, 'yyyy-MM-dd'));
+			if (rangeToUse?.from)
+				params.set('from', format(rangeToUse.from, 'yyyy-MM-dd'));
 			else params.delete('from');
 			if (rangeToUse?.to) params.set('to', format(rangeToUse.to, 'yyyy-MM-dd'));
 			else params.delete('to');
@@ -227,7 +227,9 @@ function DashboardContent() {
 			setPageLoading(true);
 			setError(null);
 			const fromDate = format(dateRangeToFetch.from, 'yyyy-MM-dd');
-			const toDate = dateRangeToFetch.to ? format(dateRangeToFetch.to, 'yyyy-MM-dd') : fromDate;
+			const toDate = dateRangeToFetch.to
+				? format(dateRangeToFetch.to, 'yyyy-MM-dd')
+				: fromDate;
 
 			try {
 				const response = await fetch(
@@ -235,28 +237,47 @@ function DashboardContent() {
 				);
 				if (!response.ok) {
 					if (response.status === 401) {
-						router.push('/login?message=Oturumunuz sonlanmış, lütfen tekrar giriş yapın.');
+						router.push(
+							'/login?message=Oturumunuz sonlanmış, lütfen tekrar giriş yapın.'
+						);
 						return;
 					}
 					const errorData = await response.json();
-					throw new Error(errorData.error || `API Hatası: Sunucudan ${response.status} kodu alındı.`);
+					throw new Error(
+						errorData.error ||
+							`API Hatası: Sunucudan ${response.status} kodu alındı.`
+					);
 				}
 				const data: DashboardData = await response.json();
-				setDashboardData(prev => ({
+				setDashboardData((prev) => ({
 					...prev,
 					...data,
 					userRole: userRoleFromAuth,
 				}));
 			} catch (err) {
-				if (err instanceof Error && err.message.includes('Oturumunuz sonlanmış')) {}
-				else if (err instanceof Error) setError(err.message);
-				else setError('Gösterge paneli verileri yüklenirken bilinmeyen bir hata oluştu.');
+				if (
+					err instanceof Error &&
+					err.message.includes('Oturumunuz sonlanmış')
+				) {
+				} else if (err instanceof Error) setError(err.message);
+				else
+					setError(
+						'Gösterge paneli verileri yüklenirken bilinmeyen bir hata oluştu.'
+					);
 				setDashboardData(null);
 			} finally {
 				setPageLoading(false);
 			}
 		},
-		[authLoading, user, router, userRoleFromAuth, setDashboardData, setError, setPageLoading]
+		[
+			authLoading,
+			user,
+			router,
+			userRoleFromAuth,
+			setDashboardData,
+			setError,
+			setPageLoading,
+		]
 	);
 
 	const initializeDashboard = useCallback(async () => {
@@ -272,12 +293,18 @@ function DashboardContent() {
 		try {
 			const initialRange = getInitialDateRange(); // Bu getInitialDateRange'in useCallback'e eklenmesi gerek.
 			const fromDate = format(initialRange.from!, 'yyyy-MM-dd');
-			const toDate = initialRange.to ? format(initialRange.to, 'yyyy-MM-dd') : fromDate;
+			const toDate = initialRange.to
+				? format(initialRange.to, 'yyyy-MM-dd')
+				: fromDate;
 
-			const branchListRes = await fetch(`/api/dashboard-data?from=${fromDate}&to=${toDate}`);
+			const branchListRes = await fetch(
+				`/api/dashboard-data?from=${fromDate}&to=${toDate}`
+			);
 			if (!branchListRes.ok) {
 				if (branchListRes.status === 401) {
-					router.push('/login?message=Oturumunuz sonlanmış, lütfen tekrar giriş yapın.');
+					router.push(
+						'/login?message=Oturumunuz sonlanmış, lütfen tekrar giriş yapın.'
+					);
 					return;
 				}
 				const err = await branchListRes.json();
@@ -287,10 +314,18 @@ function DashboardContent() {
 
 			setDashboardData((prev) => ({
 				...(prev || {
-					overviewData: [], totalRevenue: 0, totalExpenses: 0, totalNetProfit: 0,
-					totalTransactions: 0, cardTitleTotalRevenue: '', cardTitleTotalExpenses: '',
-					cardTitleTotalNetProfit: '', cardTitleTotalTransactions: '',
-					cardTitleDataEntryStatus: '', dataEntryStatusToday: false, dailyBreakdown: [],
+					overviewData: [],
+					totalRevenue: 0,
+					totalExpenses: 0,
+					totalNetProfit: 0,
+					totalTransactions: 0,
+					cardTitleTotalRevenue: '',
+					cardTitleTotalExpenses: '',
+					cardTitleTotalNetProfit: '',
+					cardTitleTotalTransactions: '',
+					cardTitleDataEntryStatus: '',
+					dataEntryStatusToday: false,
+					dailyBreakdown: [],
 				}),
 				userRole: userRoleFromAuth,
 				availableBranches: fetchedBranches || [],
@@ -298,61 +333,73 @@ function DashboardContent() {
 			}));
 
 			const urlBranch = searchParams.get('branch');
-			const lastBranch = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_BRANCH_KEY) : null;
+			const lastBranch =
+				typeof window !== 'undefined'
+					? localStorage.getItem(LOCAL_STORAGE_BRANCH_KEY)
+					: null;
 			let branchToSet: string | null = null;
 
-			if (urlBranch && fetchedBranches?.some((b: BranchInfo) => b.id === urlBranch)) branchToSet = urlBranch;
-			else if (lastBranch && fetchedBranches?.some((b: BranchInfo) => b.id === lastBranch)) branchToSet = lastBranch;
-			else if (fetchedBranches?.length === 1) branchToSet = fetchedBranches[0].id;
+			if (
+				urlBranch &&
+				fetchedBranches?.some((b: BranchInfo) => b.id === urlBranch)
+			)
+				branchToSet = urlBranch;
+			else if (
+				lastBranch &&
+				fetchedBranches?.some((b: BranchInfo) => b.id === lastBranch)
+			)
+				branchToSet = lastBranch;
+			else if (fetchedBranches?.length === 1)
+				branchToSet = fetchedBranches[0].id;
 
 			if (branchToSet) {
 				setSelectedBranchId(branchToSet);
-				if (typeof window !== 'undefined') localStorage.setItem(LOCAL_STORAGE_BRANCH_KEY, branchToSet);
-				updateURL(initialRange, currentPresetValueRef.current, branchToSet);
+				if (typeof window !== 'undefined')
+					localStorage.setItem(LOCAL_STORAGE_BRANCH_KEY, branchToSet);
+				if (!urlBranch) {
+					updateURL(initialRange, currentPresetValueRef.current, branchToSet);
+				}
+				await fetchDashboardData(branchToSet, initialRange);
 			} else if (fetchedBranches?.length > 0) {
 				setShowBranchSelectModal(true);
 				setPageLoading(false);
 			} else {
-				setError('Sistemde size atanmış veya erişebileceğiniz bir şube bulunmamaktadır.');
+				setError(
+					'Sistemde size atanmış veya erişebileceğiniz bir şube bulunmamaktadır.'
+				);
 				setPageLoading(false);
 			}
 		} catch (e) {
-			if (e instanceof Error && e.message.includes('Oturumunuz sonlanmış')) {}
-			else setError(e instanceof Error ? e.message : 'Gösterge paneli başlatılırken beklenmedik bir hata oluştu.');
+			if (e instanceof Error && e.message.includes('Oturumunuz sonlanmış')) {
+			} else
+				setError(
+					e instanceof Error
+						? e.message
+						: 'Gösterge paneli başlatılırken beklenmedik bir hata oluştu.'
+				);
 			setPageLoading(false);
 		}
 	}, [
-		authLoading, user, userRoleFromAuth, router, getInitialDateRange, searchParams, updateURL,
-		setDashboardData, setError, setPageLoading, setSelectedBranchId, setShowBranchSelectModal
+		authLoading,
+		user,
+		userRoleFromAuth,
+		router,
+		getInitialDateRange,
+		searchParams,
+		updateURL,
+		setDashboardData,
+		setError,
+		setPageLoading,
+		setSelectedBranchId,
+		setShowBranchSelectModal,
 		// currentPresetValueRef doğrudan bağımlılık olamaz, değeri kullanılmalı veya state'e çevrilmeli. Şimdilik .current ile erişiliyor.
 	]);
-
 
 	useEffect(() => {
 		if (!authLoading && user && userRoleFromAuth) {
 			initializeDashboard();
 		}
-	}, [user, userRoleFromAuth, authLoading, initializeDashboard]);
-
-	/*
-	useEffect(() => {
-		// Bu useEffect, selectedBranchId veya selectedDateRange değiştiğinde veri çeker.
-		// Auth durumu (user, authLoading) ve modal durumu da kontrol edilir.
-		// console.log('EFFECT: fetchDashboardData trigger check:', { authLoading, user, selectedBranchId, selectedDateRange, showBranchSelectModal});
-		if (!authLoading && user && selectedBranchId && selectedDateRange?.from && !showBranchSelectModal) {
-			// console.log('CALLING: fetchDashboardData from effect');
-			fetchDashboardData(selectedBranchId, selectedDateRange);
-		}
-	}, [user, authLoading, selectedBranchId, selectedDateRange, showBranchSelectModal, fetchDashboardData]);
-	*/
-
-
-	useEffect(() => {
-		// Veri çekme: selectedBranchId veya selectedDateRange değiştiğinde çalışır. Auth ve modal durumu da kontrol edilir.
-		if (!authLoading && user && selectedBranchId && selectedDateRange?.from && !showBranchSelectModal) {
-			fetchDashboardData(selectedBranchId, selectedDateRange);
-		}
-	}, [user, authLoading, selectedBranchId, selectedDateRange, showBranchSelectModal, fetchDashboardData]); // pageLoading ve dashboardData bağımlılıktan çıkarıldı
+	}, [user, userRoleFromAuth, authLoading]);
 
 	useEffect(() => {
 		// Şube seçimi modalını gösterme: Auth ve sayfa yüklemesi tamamlandıktan sonra,
@@ -360,7 +407,8 @@ function DashboardContent() {
 		// Auth ve sayfa yüklemesi tamamlandıktan sonra, eğer şube seçilmemişse ve modal açık değilse
 		// ve görüntülenecek şubeler varsa modalı açar.
 		if (
-			!authLoading && !pageLoading && // Auth ve sayfa yüklemesi bitmişse
+			!authLoading &&
+			!pageLoading && // Auth ve sayfa yüklemesi bitmişse
 			!selectedBranchId && // Şube seçilmemişse
 			!showBranchSelectModal && // Modal zaten açık değilse
 			(dashboardData?.availableBranches?.length ?? 0) > 0 // Ve seçilebilecek şube varsa
@@ -368,43 +416,45 @@ function DashboardContent() {
 			setShowBranchSelectModal(true);
 		}
 	}, [
-		authLoading, pageLoading,
+		authLoading,
+		pageLoading,
 		dashboardData?.availableBranches,
 		selectedBranchId,
 		showBranchSelectModal,
 	]);
 
 	const handleDateChange = useCallback(
-		({ range, preset }: { range: DateRange | undefined; preset: string | undefined }) => {
+		({
+			range,
+			preset,
+		}: {
+			range: DateRange | undefined;
+			preset: string | undefined;
+		}) => {
 			setSelectedDateRange(range);
 			setCurrentPresetValue(preset);
-		}, []
+			updateURL(range, preset, selectedBranchId);
+		},
+		[updateURL, selectedBranchId]
 	);
 
 	const handleBranchChange = useCallback(
 		(branchId: string | null) => {
 			if (branchId) {
 				setSelectedBranchId(branchId);
-				if (typeof window !== 'undefined') localStorage.setItem(LOCAL_STORAGE_BRANCH_KEY, branchId);
+				if (typeof window !== 'undefined')
+					localStorage.setItem(LOCAL_STORAGE_BRANCH_KEY, branchId);
 			} else {
 				setSelectedBranchId(null);
-				if (typeof window !== 'undefined') localStorage.removeItem(LOCAL_STORAGE_BRANCH_KEY);
+				if (typeof window !== 'undefined')
+					localStorage.removeItem(LOCAL_STORAGE_BRANCH_KEY);
 			}
-		}, []
+			updateURL(selectedDateRange, currentPresetValue, branchId);
+		},
+		[updateURL, selectedDateRange, currentPresetValue]
 	);
 
-	useEffect(() => {
-		if (!authLoading && user && !showBranchSelectModal && selectedDateRange) {
-			updateURL(selectedDateRange, currentPresetValue, selectedBranchId);
-		}
-	}, [
-		user, authLoading,
-		selectedBranchId,
-		selectedDateRange,
-		currentPresetValue,
-		showBranchSelectModal,
-		updateURL,
-	]);
+	// Removed effect that automatically calls updateURL on dependency changes
 
 	const handleModalBranchSelectAndApply = () => {
 		if (
@@ -436,7 +486,9 @@ function DashboardContent() {
 
 		if (dailyRecord) {
 			setSelectedDayDetail({
-				date: format(parseISO(dailyRecord.date), 'dd MMMM yyyy, EEEE', { locale: tr }),
+				date: format(parseISO(dailyRecord.date), 'dd MMMM yyyy, EEEE', {
+					locale: tr,
+				}),
 				branchName: branchName,
 				earnings: dailyRecord.earnings,
 				expenses: dailyRecord.expenses,
@@ -445,7 +497,9 @@ function DashboardContent() {
 			});
 		} else {
 			setSelectedDayDetail({
-				date: format(parseISO(clickedDateStr), 'dd MMMM yyyy, EEEE', { locale: tr }),
+				date: format(parseISO(clickedDateStr), 'dd MMMM yyyy, EEEE', {
+					locale: tr,
+				}),
 				branchName: branchName,
 				earnings: data.kazanc,
 				expenses: data.kazanc - data.netKar,
@@ -503,7 +557,8 @@ function DashboardContent() {
 	}
 
 	// Sayfa Hatası Durumu (Auth hatası veya sayfa içi diğer hatalar)
-	if (error && !showBranchSelectModal) { // Modal açıkken ana hata mesajını gösterme
+	if (error && !showBranchSelectModal) {
+		// Modal açıkken ana hata mesajını gösterme
 		return (
 			<div className="flex-1 space-y-4 p-8 pt-6 text-center">
 				<Card className="max-w-md mx-auto shadow-lg">
@@ -514,13 +569,12 @@ function DashboardContent() {
 					</CardHeader>
 					<CardContent>
 						<p className="text-muted-foreground mb-4">
-							{error ||
-								'Gösterge paneli yüklenirken bir hata meydana geldi.'}
+							{error || 'Gösterge paneli yüklenirken bir hata meydana geldi.'}
 						</p>
 						<Button
 							onClick={() => {
 								setError(null);
-								setLoading(true);
+								setPageLoading(true);
 								// Yeniden başlatma mantığı eklenebilir veya sayfa yenileme
 								window.location.reload();
 							}}
@@ -536,7 +590,7 @@ function DashboardContent() {
 	if (showBranchSelectModal) {
 		return (
 			<>
-				{(!dashboardData || loading) && renderSkeletons()}
+				{(!dashboardData || pageLoading) && renderSkeletons()}
 				<Dialog
 					open={showBranchSelectModal}
 					onOpenChange={(open) => {
@@ -560,15 +614,23 @@ function DashboardContent() {
 						className="sm:max-w-[425px]"
 						onInteractOutside={(e) => {
 							// Kullanıcının dışarı tıklayarak kapatmasını engelle (eğer şube seçimi zorunluysa)
-							if (!selectedBranchId && dashboardData?.availableBranches && dashboardData.availableBranches.length > 0) {
+							if (
+								!selectedBranchId &&
+								dashboardData?.availableBranches &&
+								dashboardData.availableBranches.length > 0
+							) {
 								e.preventDefault();
 							}
 						}}
 						onEscapeKeyDown={(e) => {
-							if (!selectedBranchId && dashboardData?.availableBranches && dashboardData.availableBranches.length > 0) {
+							if (
+								!selectedBranchId &&
+								dashboardData?.availableBranches &&
+								dashboardData.availableBranches.length > 0
+							) {
 								e.preventDefault();
 							}
-						 }}
+						}}
 					>
 						<DialogHeader>
 							<DialogTitle>Şube Seçimi Yapın</DialogTitle>
@@ -584,7 +646,7 @@ function DashboardContent() {
 								disabled={
 									!dashboardData?.availableBranches ||
 									dashboardData.availableBranches.length === 0 ||
-									loading
+									pageLoading
 								}
 							>
 								<SelectTrigger>
@@ -604,16 +666,17 @@ function DashboardContent() {
 									)}
 								</SelectContent>
 							</Select>
-							{error && !loading && ( // Yükleme sırasında hata gösterme
-								<p className="text-sm text-destructive">{error}</p>
-							)}
+							{error &&
+								!pageLoading && ( // Yükleme sırasında hata gösterme
+									<p className="text-sm text-destructive">{error}</p>
+								)}
 						</div>
 						<DialogFooter>
 							<Button
 								onClick={handleModalBranchSelectAndApply}
-								disabled={!modalSelectedBranch || loading}
+								disabled={!modalSelectedBranch || pageLoading}
 							>
-								{loading ? 'Yükleniyor...' : 'Seçili Şubeyi Uygula'}
+								{pageLoading ? 'Yükleniyor...' : 'Seçili Şubeyi Uygula'}
 							</Button>
 						</DialogFooter>
 					</DialogContent>
@@ -623,11 +686,19 @@ function DashboardContent() {
 	}
 
 	// selectedBranchId null ise ve modal kapalıysa (örneğin hiç şube yoksa) iskelet göster.
-	if (loading || !dashboardData || (!selectedBranchId && (dashboardData?.availableBranches?.length ?? 0) > 0)) {
+	if (
+		pageLoading ||
+		!dashboardData ||
+		(!selectedBranchId && (dashboardData?.availableBranches?.length ?? 0) > 0)
+	) {
 		return <div className="flex-1 space-y-4 p-8 pt-6">{renderSkeletons()}</div>;
 	}
 	// Eğer hiç şube yoksa ve selectedBranchId null ise, bir mesaj göster
-	if (!selectedBranchId && (dashboardData?.availableBranches?.length ?? 0) === 0 && !loading) {
+	if (
+		!selectedBranchId &&
+		(dashboardData?.availableBranches?.length ?? 0) === 0 &&
+		!pageLoading
+	) {
 		return (
 			<div className="flex-1 space-y-4 p-8 pt-6 text-center">
 				<Card className="max-w-md mx-auto shadow-lg">
@@ -638,14 +709,14 @@ function DashboardContent() {
 					</CardHeader>
 					<CardContent>
 						<p className="text-muted-foreground mb-4">
-							{error || 'Sistemde size atanmış veya görüntülenebilecek aktif bir şube bulunmamaktadır. Lütfen yöneticinizle iletişime geçin.'}
+							{error ||
+								'Sistemde size atanmış veya görüntülenebilecek aktif bir şube bulunmamaktadır. Lütfen yöneticinizle iletişime geçin.'}
 						</p>
 					</CardContent>
 				</Card>
 			</div>
 		);
 	}
-
 
 	const {
 		userRole,
@@ -704,31 +775,33 @@ function DashboardContent() {
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
 						<div>
 							<h2 className="text-3xl font-bold tracking-tight">
-								Genel Durum Paneli ({userRole === 'admin' ? 'Yönetici' : 'Müdür'})
+								Genel Durum Paneli (
+								{userRole === 'admin' ? 'Yönetici' : 'Müdür'})
 							</h2>
 							<p className="text-sm text-muted-foreground mt-1">
 								{branchDisplay} / {dateDisplay}
 							</p>
 						</div>
 						<div className="flex items-center space-x-2">
-							{availableBranches && availableBranches.length > 1 && ( // Sadece 1'den fazla şube varsa göster
-								<Select
-									value={selectedBranchId || undefined}
-									onValueChange={(value) => handleBranchChange(value)}
-									disabled={loading || availableBranches.length === 0}
-								>
-									<SelectTrigger className="w-auto min-w-[180px] h-10">
-										<SelectValue placeholder="Bir şube seçin..." />
-									</SelectTrigger>
-									<SelectContent>
-										{availableBranches.map((branch) => (
-											<SelectItem key={branch.id} value={branch.id}>
-												{branch.name}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							)}
+							{availableBranches &&
+								availableBranches.length > 1 && ( // Sadece 1'den fazla şube varsa göster
+									<Select
+										value={selectedBranchId || undefined}
+										onValueChange={(value) => handleBranchChange(value)}
+										disabled={pageLoading || availableBranches.length === 0}
+									>
+										<SelectTrigger className="w-auto min-w-[180px] h-10">
+											<SelectValue placeholder="Bir şube seçin..." />
+										</SelectTrigger>
+										<SelectContent>
+											{availableBranches.map((branch) => (
+												<SelectItem key={branch.id} value={branch.id}>
+													{branch.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								)}
 							{availableBranches && availableBranches.length === 0 && (
 								<div className="h-10 px-3 py-2 text-sm text-muted-foreground border rounded-md flex items-center">
 									Atanmış Şube Bulunmamaktadır
@@ -807,7 +880,7 @@ function DashboardContent() {
 								<Card>
 									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 										<CardTitle className="text-sm font-medium">
-											{cardTitleDataEntryStatus || "Bugünkü Veri Girişi"}
+											{cardTitleDataEntryStatus || 'Bugünkü Veri Girişi'}
 										</CardTitle>
 										{dataEntryStatusToday ? (
 											<CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -841,9 +914,9 @@ function DashboardContent() {
 										) : (
 											<div className="flex items-center justify-center h-[350px] text-center">
 												<p className="text-muted-foreground">
-													Seçili şube ve tarih aralığı için gösterilecek
-													grafik verisi bulunmamaktadır. <br /> Lütfen farklı
-													bir şube veya tarih aralığı seçmeyi deneyin.
+													Seçili şube ve tarih aralığı için gösterilecek grafik
+													verisi bulunmamaktadır. <br /> Lütfen farklı bir şube
+													veya tarih aralığı seçmeyi deneyin.
 												</p>
 											</div>
 										)}
@@ -885,7 +958,9 @@ function DashboardContent() {
 							</div>
 							<hr className="my-1" />
 							<div className="flex justify-between items-center">
-								<span className="text-muted-foreground font-medium">Net Kâr/Zarar:</span>
+								<span className="text-muted-foreground font-medium">
+									Net Kâr/Zarar:
+								</span>
 								<span
 									className={`font-bold text-lg ${
 										selectedDayDetail.netProfit >= 0
