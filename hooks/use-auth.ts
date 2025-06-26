@@ -49,8 +49,8 @@ export function useAuth(): AuthState {
 
     const fetchUserProfile = useCallback(async (userId: string) => {
         if (!mountedRef.current) return;
-        console.log('useAuth: Fetching user profile for ID:', userId);
-        setLoading(true);
+        // console.log('useAuth: Fetching user profile for ID:', userId);
+        setLoading(true); // Keep loading true while fetching profile
         setError(null);
 
         try {
@@ -63,12 +63,15 @@ export function useAuth(): AuthState {
             if (!mountedRef.current) return;
 
             if (profileError) {
-                console.warn('useAuth: Profile fetch error:', profileError.message);
-                throw profileError;
-            }
-
-            if (profileData) {
-                console.log('useAuth: Profile fetched successfully. Role:', profileData.role);
+                console.warn('useAuth: Profile fetch error:', profileError.message, 'User ID:', userId);
+                // setError(profileError); // Potentially set error state
+                setProfile(null);
+                setRole(null);
+                setStaffBranchId(null);
+                fetchedProfileForUserIdRef.current = null;
+                // Do not throw, allow auth state to settle even if profile fails
+            } else if (profileData) {
+                // console.log('useAuth: Profile fetched successfully. Role:', profileData.role);
                 setProfile(profileData as Profile);
                 setRole(profileData.role);
                 setStaffBranchId(profileData.staff_branch_id);
@@ -78,91 +81,90 @@ export function useAuth(): AuthState {
                 setProfile(null);
                 setRole(null);
                 setStaffBranchId(null);
-                fetchedProfileForUserIdRef.current = null; // Clear if no profile found
+                fetchedProfileForUserIdRef.current = null;
             }
         } catch (e: any) {
             if (!mountedRef.current) return;
-            console.error('useAuth: Exception during profile fetch:', e.message);
-            setError(e);
+            console.error('useAuth: Exception during profile fetch:', e.message, 'User ID:', userId);
+            // setError(e); // Potentially set error state
             setProfile(null);
             setRole(null);
             setStaffBranchId(null);
             fetchedProfileForUserIdRef.current = null;
         } finally {
             if (mountedRef.current) {
-                setLoading(false);
+                 // Loading should be set to false after all auth state changes are processed,
+                 // typically at the end of onAuthStateChange or initial getSession.
+                 // Here, we only set it if there was an error or no user,
+                 // otherwise, onAuthStateChange will handle it.
+                 // For simplicity, let onAuthStateChange handle the final setLoading(false)
             }
         }
-    }, [supabase]);
+    }, [supabase]); // Only supabase is a direct dependency for fetchUserProfile
 
     useEffect(() => {
-        setLoading(true);
-        supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-            if (!mountedRef.current) return;
-            console.log('useAuth: Initial getSession. User ID:', currentSession?.user?.id);
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
+        setLoading(true); // Start with loading true
 
-            if (currentSession?.user) {
-                if (fetchedProfileForUserIdRef.current !== currentSession.user.id || !profile) {
-                    fetchUserProfile(currentSession.user.id);
-                } else {
-                    setLoading(false); // Profile already fetched for this user
-                }
-            } else {
+        const handleAuthChange = async (event: string | null, currentSession: Session | null) => {
+            if (!mountedRef.current) return;
+
+            // console.log('useAuth: Auth event:', event, 'Session user ID:', currentSession?.user?.id);
+            setSession(currentSession);
+            const currentUser = currentSession?.user ?? null;
+            setUser(currentUser);
+
+            if (event === 'SIGNED_OUT') {
                 setProfile(null);
                 setRole(null);
                 setStaffBranchId(null);
                 fetchedProfileForUserIdRef.current = null;
+            } else if (currentUser) {
+                // Re-fetch profile if:
+                // 1. It's a new user (ID changed)
+                // 2. It's an explicit SIGNED_IN or USER_UPDATED event (profile might have changed server-side)
+                // 3. Profile hasn't been fetched for the current user yet
+                if (
+                    fetchedProfileForUserIdRef.current !== currentUser.id ||
+                    event === 'SIGNED_IN' ||
+                    event === 'USER_UPDATED'
+                    // Removed !profile check here, as fetchedProfileForUserIdRef.current handles "not fetched yet"
+                ) {
+                    await fetchUserProfile(currentUser.id);
+                } else if (event === 'TOKEN_REFRESHED') {
+                    // If token is refreshed for the same user and profile was already fetched,
+                    // no need to re-fetch. Session is updated, user object might be new but ID is same.
+                    // console.log('useAuth: Token refreshed for same user, profile retained.');
+                }
+            } else { // No user session
+                setProfile(null);
+                setRole(null);
+                setStaffBranchId(null);
+                fetchedProfileForUserIdRef.current = null;
+            }
+            // Set loading to false after all processing for this auth change is done
+            if (mountedRef.current) {
                 setLoading(false);
             }
+        };
+
+        // Initial session check
+        supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+            // Pass null as event for initial load, or a specific string if preferred
+            handleAuthChange('INITIAL_SESSION', initialSession);
         });
 
+        // Listen to auth state changes
         const { data: authListener } = supabase.auth.onAuthStateChange(
-            async (event, newSession) => {
-                if (!mountedRef.current) return;
-                console.log('useAuth: onAuthStateChange event:', event, 'Session user ID:', newSession?.user?.id);
-
-                setSession(newSession);
-                setUser(newSession?.user ?? null);
-
-                if (event === 'SIGNED_OUT') {
-                    setProfile(null);
-                    setRole(null);
-                    setStaffBranchId(null);
-                    fetchedProfileForUserIdRef.current = null;
-                    setLoading(false);
-                    // Navigation is typically handled by middleware or page logic,
-                    // but can be added here if specific behavior is needed from the hook itself.
-                    // Example: if (pathname !== '/login' && pathname !== '/signup') router.push('/login');
-                    return;
-                }
-
-                if (newSession?.user) {
-                    if (fetchedProfileForUserIdRef.current !== newSession.user.id || !profile || event === 'USER_UPDATED' || event === 'SIGNED_IN') {
-                        fetchUserProfile(newSession.user.id);
-                    } else if (event === 'TOKEN_REFRESHED' && fetchedProfileForUserIdRef.current === newSession.user.id && profile) {
-                        console.log('useAuth: Token refreshed for same user, profile retained.');
-                        setLoading(false); // No need to re-fetch if profile for this user is already loaded
-                    }
-                } else if (!newSession?.user) {
-                    // If event is not 'SIGNED_OUT' and session is null, this block will be reached.
-                    // This covers cases where session becomes null without an explicit 'SIGNED_OUT' event.
-                    console.log('useAuth: Session is null and event is not SIGNED_OUT. Event:', event);
-                    setProfile(null);
-                    setRole(null);
-                    setStaffBranchId(null);
-                    fetchedProfileForUserIdRef.current = null;
-                    setLoading(false);
-                }
+            (event, session) => {
+                handleAuthChange(event, session);
             }
         );
 
         return () => {
             authListener?.subscription?.unsubscribe();
-            mountedRef.current = false; // Also set on unmount
+            mountedRef.current = false;
         };
-    }, [supabase, fetchUserProfile, profile, router, pathname]); // Added profile, router, pathname dependencies
+    }, [supabase, fetchUserProfile]); // Dependencies: supabase and fetchUserProfile
 
     return { session, user, profile, role, staffBranchId, loading, error };
 }
