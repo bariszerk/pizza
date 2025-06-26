@@ -153,7 +153,7 @@ function DashboardContent() {
 	const [dashboardData, setDashboardData] = useState<DashboardData | null>(
 		null
 	);
-	const [loading, setLoading] = useState(true);
+	// const [loading, setLoading] = useState(true); // pageLoading ile birleştirildi
 	const [error, setError] = useState<string | null>(null); // Page specific errors
 	const [pageLoading, setPageLoading] = useState(true); // Page specific loading
 
@@ -172,19 +172,16 @@ function DashboardContent() {
 			if (authError) {
 				setError(`Auth Hatası: ${authError.message}`);
 				setPageLoading(false);
-				// Opsiyonel: router.push('/login');
 				return;
 			}
 			if (!user) {
 				router.push('/login?message=Giriş yapmanız gerekiyor.');
-				return; // Yönlendirme sonrası bu effect'ten çık
+				return;
 			}
 			if (userRoleFromAuth !== 'admin' && userRoleFromAuth !== 'manager') {
 				router.push('/?message=Bu sayfaya erişim yetkiniz yok.');
-				return; // Yönlendirme sonrası bu effect'ten çık
+				return;
 			}
-			// Auth kontrolleri başarılı, sayfa yüklemesine devam edilebilir.
-			// setPageLoading(false); // Bu, initializeDashboard'un sonunda yapılmalı
 		}
 	}, [user, userRoleFromAuth, authLoading, authError, router]);
 
@@ -202,19 +199,15 @@ function DashboardContent() {
 			const rangeToUse = newRange || currentSelectedDateRangeRef.current;
 			const presetToUse = newPreset || currentPresetValueRef.current;
 
-			if (rangeToUse?.from)
-				params.set('from', format(rangeToUse.from, 'yyyy-MM-dd'));
+			if (rangeToUse?.from) params.set('from', format(rangeToUse.from, 'yyyy-MM-dd'));
 			else params.delete('from');
 			if (rangeToUse?.to) params.set('to', format(rangeToUse.to, 'yyyy-MM-dd'));
 			else params.delete('to');
 			if (presetToUse) params.set('preset', presetToUse);
 			else params.delete('preset');
 
-			if (newBranchId === null) {
-				params.delete('branch');
-			} else if (newBranchId) {
-				params.set('branch', newBranchId);
-			}
+			if (newBranchId === null) params.delete('branch');
+			else if (newBranchId) params.set('branch', newBranchId);
 
 			router.replace(`/dashboard?${params.toString()}`, { scroll: false });
 		},
@@ -223,27 +216,18 @@ function DashboardContent() {
 
 	const fetchDashboardData = useCallback(
 		async (branchIdToFetch: string | null, dateRangeToFetch: DateRange) => {
-			if (authLoading || !user) {
-				// console.log('fetchDashboardData: Auth not ready, skipping.');
-				return;
-			}
+			if (authLoading || !user) return;
 			if (!dateRangeToFetch?.from) {
 				setError('Veri çekmek için lütfen bir başlangıç tarihi seçin.');
 				setPageLoading(false);
 				return;
 			}
-			if (!branchIdToFetch) {
-				// setError('Lütfen veri görüntülemek için bir şube seçin.');
-				// setPageLoading(false); // Şube seçimi bekleniyorsa yüklemeyi durdurma
-				return;
-			}
+			if (!branchIdToFetch) return;
 
 			setPageLoading(true);
 			setError(null);
 			const fromDate = format(dateRangeToFetch.from, 'yyyy-MM-dd');
-			const toDate = dateRangeToFetch.to
-				? format(dateRangeToFetch.to, 'yyyy-MM-dd')
-				: fromDate;
+			const toDate = dateRangeToFetch.to ? format(dateRangeToFetch.to, 'yyyy-MM-dd') : fromDate;
 
 			try {
 				const response = await fetch(
@@ -255,141 +239,124 @@ function DashboardContent() {
 						return;
 					}
 					const errorData = await response.json();
-					throw new Error(
-						errorData.error ||
-							`API Hatası: Sunucudan ${response.status} kodu alındı.`
-					);
+					throw new Error(errorData.error || `API Hatası: Sunucudan ${response.status} kodu alındı.`);
 				}
 				const data: DashboardData = await response.json();
-				// Gelen data içinde userRole olabilir, ama biz auth hook'unkini kullanıyoruz.
-				// Sadece dashboard'a özgü verileri alalım.
 				setDashboardData(prev => ({
-					...prev, // Keep existing availableBranches and userRoleFromAuth
-					...data, // Override with new data from API for this specific branch
-					userRole: userRoleFromAuth, // Ensure auth hook's role is authoritative
+					...prev,
+					...data,
+					userRole: userRoleFromAuth,
 				}));
 			} catch (err) {
-				if (err instanceof Error && err.message.includes('Oturumunuz sonlanmış')) {
-					// Do nothing, already redirected
-				} else if (err instanceof Error) {
-					setError(err.message);
-				} else {
-					setError('Gösterge paneli verileri yüklenirken bilinmeyen bir hata oluştu.');
-				}
+				if (err instanceof Error && err.message.includes('Oturumunuz sonlanmış')) {}
+				else if (err instanceof Error) setError(err.message);
+				else setError('Gösterge paneli verileri yüklenirken bilinmeyen bir hata oluştu.');
 				setDashboardData(null);
 			} finally {
 				setPageLoading(false);
 			}
 		},
-		[authLoading, user, router, userRoleFromAuth] // userRoleFromAuth eklendi
+		[authLoading, user, router, userRoleFromAuth, setDashboardData, setError, setPageLoading]
 	);
 
+	const initializeDashboard = useCallback(async () => {
+		if (authLoading || !user || !userRoleFromAuth) return;
+		if (userRoleFromAuth !== 'admin' && userRoleFromAuth !== 'manager') {
+			setPageLoading(false);
+			return;
+		}
+
+		setPageLoading(true);
+		setError(null);
+
+		try {
+			const initialRange = getInitialDateRange(); // Bu getInitialDateRange'in useCallback'e eklenmesi gerek.
+			const fromDate = format(initialRange.from!, 'yyyy-MM-dd');
+			const toDate = initialRange.to ? format(initialRange.to, 'yyyy-MM-dd') : fromDate;
+
+			const branchListRes = await fetch(`/api/dashboard-data?from=${fromDate}&to=${toDate}`);
+			if (!branchListRes.ok) {
+				if (branchListRes.status === 401) {
+					router.push('/login?message=Oturumunuz sonlanmış, lütfen tekrar giriş yapın.');
+					return;
+				}
+				const err = await branchListRes.json();
+				throw new Error(err.error || 'Şube bilgileri alınamadı.');
+			}
+			const { availableBranches: fetchedBranches } = await branchListRes.json();
+
+			setDashboardData((prev) => ({
+				...(prev || {
+					overviewData: [], totalRevenue: 0, totalExpenses: 0, totalNetProfit: 0,
+					totalTransactions: 0, cardTitleTotalRevenue: '', cardTitleTotalExpenses: '',
+					cardTitleTotalNetProfit: '', cardTitleTotalTransactions: '',
+					cardTitleDataEntryStatus: '', dataEntryStatusToday: false, dailyBreakdown: [],
+				}),
+				userRole: userRoleFromAuth,
+				availableBranches: fetchedBranches || [],
+				selectedBranchId: prev?.selectedBranchId || null,
+			}));
+
+			const urlBranch = searchParams.get('branch');
+			const lastBranch = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_BRANCH_KEY) : null;
+			let branchToSet: string | null = null;
+
+			if (urlBranch && fetchedBranches?.some((b: BranchInfo) => b.id === urlBranch)) branchToSet = urlBranch;
+			else if (lastBranch && fetchedBranches?.some((b: BranchInfo) => b.id === lastBranch)) branchToSet = lastBranch;
+			else if (fetchedBranches?.length === 1) branchToSet = fetchedBranches[0].id;
+
+			if (branchToSet) {
+				setSelectedBranchId(branchToSet);
+				if (typeof window !== 'undefined') localStorage.setItem(LOCAL_STORAGE_BRANCH_KEY, branchToSet);
+				updateURL(initialRange, currentPresetValueRef.current, branchToSet);
+			} else if (fetchedBranches?.length > 0) {
+				setShowBranchSelectModal(true);
+				setPageLoading(false);
+			} else {
+				setError('Sistemde size atanmış veya erişebileceğiniz bir şube bulunmamaktadır.');
+				setPageLoading(false);
+			}
+		} catch (e) {
+			if (e instanceof Error && e.message.includes('Oturumunuz sonlanmış')) {}
+			else setError(e instanceof Error ? e.message : 'Gösterge paneli başlatılırken beklenmedik bir hata oluştu.');
+			setPageLoading(false);
+		}
+	}, [
+		authLoading, user, userRoleFromAuth, router, getInitialDateRange, searchParams, updateURL,
+		setDashboardData, setError, setPageLoading, setSelectedBranchId, setShowBranchSelectModal
+		// currentPresetValueRef doğrudan bağımlılık olamaz, değeri kullanılmalı veya state'e çevrilmeli. Şimdilik .current ile erişiliyor.
+	]);
+
+
 	useEffect(() => {
-		const initializeDashboard = async () => {
-			if (authLoading || !user || !userRoleFromAuth) {
-				// console.log('initializeDashboard: Auth not ready, skipping.');
-				return;
-			}
-			if (userRoleFromAuth !== 'admin' && userRoleFromAuth !== 'manager') {
-				// Bu kontrol zaten üstteki useEffect'te var ama burada da durabilir.
-				// router.push('/?message=Yetkisiz erişim.'); // Zaten yönlendirildi.
-				setPageLoading(false);
-				return;
-			}
-
-			setPageLoading(true);
-			setError(null);
-
-			try {
-				const initialRange = getInitialDateRange();
-				const fromDate = format(initialRange.from!, 'yyyy-MM-dd');
-				const toDate = initialRange.to ? format(initialRange.to, 'yyyy-MM-dd') : fromDate;
-
-				// Sadece şube listesini almak için API'ye istek at (şube ID'si olmadan)
-				// API'nin bu durumda sadece availableBranches döndürdüğünü varsayıyoruz.
-				const branchListRes = await fetch(
-					`/api/dashboard-data?from=${fromDate}&to=${toDate}` // Burası sadece şube listesi için
-				);
-
-				if (!branchListRes.ok) {
-					if (branchListRes.status === 401) {
-						router.push('/login?message=Oturumunuz sonlanmış, lütfen tekrar giriş yapın.');
-						return;
-					}
-					const err = await branchListRes.json();
-					throw new Error(err.error || 'Şube bilgileri alınamadı.');
-				}
-				const { availableBranches: fetchedBranches } = await branchListRes.json();
-
-				setDashboardData((prev) => ({
-					...(prev || {
-						overviewData: [], totalRevenue: 0, totalExpenses: 0, totalNetProfit: 0,
-						totalTransactions: 0, cardTitleTotalRevenue: '', cardTitleTotalExpenses: '',
-						cardTitleTotalNetProfit: '', cardTitleTotalTransactions: '',
-						cardTitleDataEntryStatus: '', dataEntryStatusToday: false, dailyBreakdown: [],
-					}),
-					userRole: userRoleFromAuth, // Auth hook'tan gelen rolü kullan
-					availableBranches: fetchedBranches || [],
-					selectedBranchId: prev?.selectedBranchId || null,
-				}));
-
-				const urlBranch = searchParams.get('branch');
-				const lastBranch = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_BRANCH_KEY) : null;
-				let branchToSet: string | null = null;
-
-				if (urlBranch && fetchedBranches?.some((b: BranchInfo) => b.id === urlBranch)) {
-					branchToSet = urlBranch;
-				} else if (lastBranch && fetchedBranches?.some((b: BranchInfo) => b.id === lastBranch)) {
-					branchToSet = lastBranch;
-				} else if (fetchedBranches?.length === 1) {
-					branchToSet = fetchedBranches[0].id;
-				}
-
-				if (branchToSet) {
-					setSelectedBranchId(branchToSet);
-					if (typeof window !== 'undefined') localStorage.setItem(LOCAL_STORAGE_BRANCH_KEY, branchToSet);
-					updateURL(initialRange, currentPresetValueRef.current, branchToSet);
-					// fetchDashboardData(branchToSet, initialRange); // selectedBranchId değişimine bırakıldı
-				} else if (fetchedBranches?.length > 0) {
-					setShowBranchSelectModal(true);
-					setPageLoading(false); // Modal gösterileceği için sayfa yüklemesi bitti sayılır.
-				} else {
-					setError('Sistemde size atanmış veya erişebileceğiniz bir şube bulunmamaktadır.');
-					setPageLoading(false);
-				}
-			} catch (e) {
-				if (e instanceof Error && e.message.includes('Oturumunuz sonlanmış')) {
-					// Do nothing, already redirected
-				} else {
-					setError(e instanceof Error ? e.message : 'Gösterge paneli başlatılırken beklenmedik bir hata oluştu.');
-				}
-				setPageLoading(false);
-			}
-			// setPageLoading(false) çağrısı fetchDashboardData veya modal gösterme durumuna göre yönetilecek.
-			// Eğer şube hemen seçilip fetchDashboardData çağrılacaksa, o fonksiyon içinde setLoading(false) yapılır.
-			// Eğer modal açılacaksa, modal açılmadan önce setLoading(false) yapılmalı.
-		};
-
 		if (!authLoading && user && userRoleFromAuth) {
 			initializeDashboard();
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [user, userRoleFromAuth, authLoading, getInitialDateRange, router, searchParams, updateURL]); // Bağımlılıklar güncellendi
+	}, [user, userRoleFromAuth, authLoading, initializeDashboard]);
 
+	/*
 	useEffect(() => {
 		// Bu useEffect, selectedBranchId veya selectedDateRange değiştiğinde veri çeker.
 		// Auth durumu (user, authLoading) ve modal durumu da kontrol edilir.
+		// console.log('EFFECT: fetchDashboardData trigger check:', { authLoading, user, selectedBranchId, selectedDateRange, showBranchSelectModal});
 		if (!authLoading && user && selectedBranchId && selectedDateRange?.from && !showBranchSelectModal) {
+			// console.log('CALLING: fetchDashboardData from effect');
 			fetchDashboardData(selectedBranchId, selectedDateRange);
-		} else if (!selectedBranchId && !authLoading && !pageLoading && !showBranchSelectModal && dashboardData?.availableBranches?.length === 0) {
-			// Eğer şube seçilmemişse, yükleme bitmişse, modal açık değilse ve hiç şube yoksa
-			// setError ile kullanıcıyı bilgilendir. Bu initializeDashboard sonunda da yapılabilir.
-			// setError('Görüntülenecek şube bulunmamaktadır.'); // Bu initializeDashboard'da ele alındı.
 		}
-	}, [user, authLoading, selectedBranchId, selectedDateRange, showBranchSelectModal, fetchDashboardData, pageLoading, dashboardData?.availableBranches]);
+	}, [user, authLoading, selectedBranchId, selectedDateRange, showBranchSelectModal, fetchDashboardData]);
+	*/
+
 
 	useEffect(() => {
-		// Bu useEffect, şube seçimi modalını göstermekten sorumlu.
+		// Veri çekme: selectedBranchId veya selectedDateRange değiştiğinde çalışır. Auth ve modal durumu da kontrol edilir.
+		if (!authLoading && user && selectedBranchId && selectedDateRange?.from && !showBranchSelectModal) {
+			fetchDashboardData(selectedBranchId, selectedDateRange);
+		}
+	}, [user, authLoading, selectedBranchId, selectedDateRange, showBranchSelectModal, fetchDashboardData]); // pageLoading ve dashboardData bağımlılıktan çıkarıldı
+
+	useEffect(() => {
+		// Şube seçimi modalını gösterme: Auth ve sayfa yüklemesi tamamlandıktan sonra,
+		// eğer şube seçilmemişse, modal açık değilse ve görüntülenecek şubeler varsa modalı açar.
 		// Auth ve sayfa yüklemesi tamamlandıktan sonra, eğer şube seçilmemişse ve modal açık değilse
 		// ve görüntülenecek şubeler varsa modalı açar.
 		if (
