@@ -5,8 +5,16 @@ import { NextResponse } from 'next/server';
 import { updateSession } from './utils/supabase/middleware'; // Bu, cookie'leri güncelleyip response döndürür
 
 export async function middleware(request: NextRequest) {
-    const response = await updateSession(request); // Bu, NextResponse döndürür
+    let response = await updateSession(request); // Bu, NextResponse döndürür
 
+    // updateSession bir yönlendirme yapmış olabilir (örneğin, session yoksa /login'e).
+    // Eğer bir yönlendirme başlığı varsa, bu response'u hemen döndür.
+    if (response.headers.has('Location')) {
+        return response;
+    }
+
+    // updateSession'dan gelen response'u kullanarak createServerClient'ı oluştur.
+    // Bu, cookie'lerin response'a doğru şekilde eklendiğinden emin olmak için önemlidir.
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -16,9 +24,10 @@ export async function middleware(request: NextRequest) {
                     return request.cookies.get(name)?.value;
                 },
                 set(name: string, value: string, options: CookieOptions) {
+                    // Burada request.cookies'i güncellemek önemli, çünkü sonraki
+                    // supabase.auth.getUser() çağrısı güncel cookie'leri kullanmalı.
                     request.cookies.set({ name, value, ...options });
-                    // response'u yeniden oluşturmamız gerekebilir veya mevcut olana ekleyebiliriz.
-                    // updateSession zaten bir response döndürdüğü için, onun üzerinde işlem yapıyoruz.
+                    // updateSession'dan gelen response objesini güncelle.
                     response.cookies.set({ name, value, ...options });
                 },
                 remove(name: string, options: CookieOptions) {
@@ -29,24 +38,26 @@ export async function middleware(request: NextRequest) {
         }
     );
 
-    const { pathname } = request.nextUrl;
+    // ÖNEMLİ: supabase.auth.getUser() çağrısı, session'ı yenileyebilir ve
+    // cookie'leri güncelleyebilir. Bu nedenle, yukarıdaki `set` ve `remove` metodlarının
+    // hem `request.cookies` hem de `response.cookies` üzerinde işlem yapması kritiktir.
+    // `updateSession` zaten `NextResponse.next({ request })` ile bir response oluşturur
+    // ve cookie'leri ayarlar. `createServerClient` içindeki `cookies` metodları
+    // bu response üzerinde çalışmaya devam etmelidir.
 
-    // Logout yolunu middleware işlemesinden hariç tut (veya en başta ele al)
-    // Eğer /logout bir API rotası değilse (ki app router'da route handler'lar sayfa gibi işlenir),
-    // ve sadece session'ı temizleyip yönlendirme yapıyorsa, middleware'in normal akışına girmemeli.
-    // Ancak, updateSession'ın çalışması yine de önemli olabilir.
-    // En temizi, matcher ile hariç tutmak veya burada çok erken bir return yapmak.
-    // Ama /logout POST olduğu için ve cookie'leri temizlemesi gerektiği için updateSession'dan geçmesi iyi olabilir.
-    // Sadece getUser() ve rol bazlı yönlendirmelerden muaf tutalım.
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // getUser çağrısından sonra session değişmiş ve cookie'ler güncellenmiş olabilir.
+    // Bu cookie'ler zaten `response.cookies.set` aracılığıyla `response` objesine eklendi.
+
+    const { pathname } = request.nextUrl;
 
     if (pathname === '/logout') {
         // /logout POST isteği route handler tarafından işlenecek.
-        // Middleware burada sadece session'ı güncel tutmuş olmalı.
+        // Middleware session'ı güncel tuttu ve cookie'ler response'a eklendi.
         // Ek bir yönlendirme yapmamalı.
         return response;
     }
-
-    const { data: { user } } = await supabase.auth.getUser();
 
     const publicPaths = ['/login', '/signup', '/auth', '/verify-email', '/forgot-password', '/update-password'];
     if (publicPaths.some(path => pathname.startsWith(path))) {
