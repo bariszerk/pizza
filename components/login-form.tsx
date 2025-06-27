@@ -40,13 +40,38 @@ export function LoginForm({
 		}
 
 		if (error) {
-			setError(error.message);
+			// Kullanıcı adı veya şifre yanlışsa genel bir hata mesajı göster
+			if (error.message === 'Invalid login credentials') {
+				setError('Geçersiz e-posta veya şifre.');
+				// E-posta doğrulanmamışsa verify-email sayfasına yönlendir
+			} else if (error.message.includes('Email not confirmed')) {
+				router.push('/verify-email');
+				// setError('Lütfen e-posta adresinizi doğrulayın.'); // İsteğe bağlı: yönlendirme öncesi mesaj
+				setLoading(false);
+				return;
+			} else {
+				setError(error.message);
+			}
 			setLoading(false);
 			return;
 		}
 
-		// Giriş başarılıysa yönlendirme yapabilirsiniz, örneğin dashboard'a
-		router.push('/dashboard');
+		// Giriş başarılıysa ve kullanıcı bilgisi varsa yönlendirme yap
+		if (data?.user) {
+			// Kullanıcının e-postasının doğrulanıp doğrulanmadığını kontrol et
+			// Supabase'den gelen user objesinde email_confirmed_at alanı bu bilgiyi tutar
+			if (data.user.email_confirmed_at) {
+				router.push('/dashboard');
+			} else {
+				// Bu durum normalde yukarıdaki error.message.includes('Email not confirmed') tarafından yakalanmalı
+				// ancak ek bir güvenlik katmanı olarak burada da kontrol edilebilir.
+				router.push('/verify-email');
+			}
+		} else {
+			// data.user yoksa beklenmedik bir durum, genel hata
+			setError('Giriş sırasında bir sorun oluştu. Lütfen tekrar deneyin.');
+		}
+
 		setLoading(false);
 	}
 

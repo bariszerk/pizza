@@ -8,10 +8,7 @@ export async function POST(request: Request) {
 
 	if (error) {
 		console.error('/logout API: Error signing out:', error.message);
+		return NextResponse.json({ success: false, error: error.message }, { status: 500 });
 	}
-	return NextResponse.redirect(new URL('/login', request.url), {
-		headers: {
-			'Cache-Control': 'no-store, max-age=0',
-		},
-	});
+	return NextResponse.json({ success: true });
 }

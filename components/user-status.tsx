@@ -12,11 +12,12 @@ import { createClient } from '@/utils/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { LogOutIcon, SettingsIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // useRouter import edildi
 import { useEffect, useState } from 'react';
 
 export function UserStatus() {
 	const [session, setSession] = useState<Session | null>(null);
-
+	const router = useRouter(); // useRouter hook'u kullanıldı
 	const supabase = createClient();
 
 	useEffect(() => {
@@ -36,12 +37,25 @@ export function UserStatus() {
 	}, [supabase.auth]);
 
 	async function handleLogout() {
-		const { error } = await supabase.auth.signOut();
-		if (error) {
-			console.error(
-				'UserStatus: Direct client-side signOut error:',
-				error.message
-			);
+		const response = await fetch('/logout', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		});
+
+		if (response.ok) {
+			const data = await response.json();
+			if (data.success) {
+				// İstemci tarafında session'ı temizle ve yönlendir
+				await supabase.auth.signOut(); // Bu hala gerekli olabilir, session'ı client'ta temizler
+				router.push('/login');
+				router.refresh(); // Sayfayı yenileyerek state'in güncellenmesini sağla
+			} else {
+				console.error('Logout failed:', data.error);
+			}
+		} else {
+			console.error('Logout request failed:', response.statusText);
 		}
 	}
 
