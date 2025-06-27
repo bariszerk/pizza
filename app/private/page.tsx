@@ -1,26 +1,318 @@
-import { createClient } from '@/utils/supabase/server';
-import { redirect } from 'next/navigation';
-export default async function PrivatePage() {
-	const supabase = await createClient();
-	const { data, error } = await supabase.auth.getUser();
-	if (error || !data?.user) {
-		redirect('/login');
+'use client'; // This page now requires client-side interactivity
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { createClient } from '@/utils/supabase/client'; // Use client for client-side operations
+import { User } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, FormEvent } from 'react';
+import { Toaster, toast } from 'sonner'; // For notifications
+
+export default function PrivatePage() {
+	const supabase = createClient();
+	const router = useRouter();
+	const [user, setUser] = useState<User | null>(null);
+	const [loading, setLoading] = useState(true);
+
+	// Profile state
+	const [fullName, setFullName] = useState('');
+	const [phone, setPhone] = useState('');
+	const [profileMessage, setProfileMessage] = useState('');
+	const [profileError, setProfileError] = useState('');
+
+	// Password state
+	const [currentPassword, setCurrentPassword] = useState('');
+	const [newPassword, setNewPassword] = useState('');
+	const [confirmNewPassword, setConfirmNewPassword] = useState('');
+	const [passwordMessage, setPasswordMessage] = useState('');
+	const [passwordError, setPasswordError] = useState('');
+
+	useEffect(() => {
+		const getUser = async () => {
+			const { data, error } = await supabase.auth.getUser();
+			if (error || !data?.user) {
+				router.push('/login');
+			} else {
+				setUser(data.user);
+				// Initialize fullName and phone state for user input, leave them empty initially
+				// The fetched metadata will be used for placeholders.
+				// setFullName(data.user.user_metadata?.full_name || ''); // Keep for input value
+				// setPhone(data.user.user_metadata?.phone || ''); // Keep for input value
+			}
+			setLoading(false);
+		};
+		getUser();
+	}, [router, supabase.auth]);
+
+	const handleProfileUpdate = async (e: FormEvent) => {
+		e.preventDefault();
+		setProfileMessage('');
+		setProfileError('');
+
+		if (!user) return;
+
+		// Use fullName and phone states which hold the user's input.
+		// If they are empty, it means the user wants to clear these fields.
+		const dataToUpdate: { full_name?: string; phone?: string } = {};
+		if (fullName.trim() === '' && user.user_metadata?.full_name) {
+			dataToUpdate.full_name = ''; // Explicitly set to empty if was not empty before
+		} else if (fullName.trim() !== '') {
+			dataToUpdate.full_name = fullName.trim();
+		}
+
+		if (phone.trim() === '' && user.user_metadata?.phone) {
+			dataToUpdate.phone = ''; // Explicitly set to empty if was not empty before
+		} else if (phone.trim() !== '') {
+			dataToUpdate.phone = phone.trim();
+		}
+
+
+		// Only update if there's something to update
+		if (Object.keys(dataToUpdate).length === 0 && fullName === '' && phone === '') {
+		    // If both inputs are empty AND there was no previous data, do nothing or inform user.
+		    // Or if inputs match existing placeholder data and are not explicitly cleared.
+		    // For simplicity, let's assume if the state variables fullName and phone are empty,
+		    // and they were also empty in metadata, no update call is needed unless explicitly cleared.
+		    // This logic might need refinement based on desired UX for clearing fields.
+		    // Current logic: if input is empty string, it will try to set it to empty string.
+		}
+
+
+		const { error } = await supabase.auth.updateUser({
+			data: dataToUpdate,
+		});
+
+		if (error) {
+			setProfileError(`Profil güncellenirken hata: ${error.message}`);
+			toast.error(`Profil güncellenirken hata: ${error.message}`);
+		} else {
+			setProfileMessage('Profil başarıyla güncellendi!');
+			toast.success('Profil başarıyla güncellendi!');
+			// Refresh user data locally if needed or let Supabase auth state handle it
+			const { data: updatedUserData } = await supabase.auth.refreshSession();
+			if (updatedUserData.user) {
+				setUser(updatedUserData.user);
+			}
+		}
+	};
+
+	const handlePasswordChange = async (e: FormEvent) => {
+		e.preventDefault();
+		setPasswordMessage('');
+		setPasswordError('');
+
+		if (newPassword !== confirmNewPassword) {
+			setPasswordError('Yeni şifreler eşleşmiyor.');
+			toast.error('Yeni şifreler eşleşmiyor.');
+			return;
+		}
+		if (newPassword.length < 6) {
+			setPasswordError('Yeni şifre en az 6 karakter olmalıdır.');
+			toast.error('Yeni şifre en az 6 karakter olmalıdır.');
+			return;
+		}
+		if (!user) return;
+
+		// Supabase requires the user to be recently re-authenticated to change password
+		// For simplicity, we'll try directly. If it fails due to auth,
+		// we'd need to implement a re-authentication flow.
+		// A more robust solution might involve an API route that uses the admin client
+		// or handles re-authentication.
+
+		// Now using the API route
+		try {
+			const response = await fetch('/api/auth/change-password', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ currentPassword, newPassword }),
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				setPasswordError(result.error || 'Bir hata oluştu.');
+				toast.error(result.error || 'Bir hata oluştu.');
+			} else {
+				setPasswordMessage(
+					result.message || 'Şifre başarıyla güncellendi!'
+				);
+				let successMessage = result.message || 'Şifre başarıyla güncellendi!';
+				if (result.requiresEmailConfirmation) {
+					successMessage += ' Onay için lütfen e-postanızı kontrol edin.';
+				}
+				toast.success(successMessage);
+				setCurrentPassword('');
+				setNewPassword('');
+				setConfirmNewPassword('');
+			}
+		} catch (error) {
+			console.error('Password change fetch error:', error);
+			setPasswordError('Ağ hatası veya beklenmeyen bir sorun oluştu.');
+			toast.error('Ağ hatası veya beklenmeyen bir sorun oluştu.');
+		}
+	};
+
+	if (loading) {
+		return (
+			<main className="flex items-center justify-center p-6 min-h-screen">
+				<p>Yükleniyor...</p>
+			</main>
+		);
 	}
+
+	if (!user) {
+		return null; // Should be redirected by useEffect
+	}
+
 	return (
-		<main className="flex items-center justify-center p-6">
-			<div className="w-full max-w-md p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-				<h1 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100">
-					Bilgilerim
+		<>
+			<Toaster richColors position="top-center" />
+			<main className="flex flex-col items-center p-6 space-y-8">
+				<h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+					Ayarlarım
 				</h1>
-				<div className="mt-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg shadow-sm">
-					<p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-						Email:
-					</p>
-					<p className="text-xl font-semibold text-gray-700 dark:text-gray-100">
-						{data.user.email}
-					</p>
-				</div>
-			</div>
-		</main>
+
+				{/* Profile Information Section */}
+				<section className="w-full max-w-md p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+					<h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+						Profil Bilgileri
+					</h2>
+					<form onSubmit={handleProfileUpdate} className="space-y-4">
+						<div>
+							<Label htmlFor="email" className="text-gray-700 dark:text-gray-300">
+								Email
+							</Label>
+							<Input
+								id="email"
+								type="email"
+								value={user.email || ''}
+								disabled
+								className="mt-1 bg-gray-100 dark:bg-gray-700"
+							/>
+						</div>
+						<div>
+							<Label
+								htmlFor="fullName"
+								className="text-gray-700 dark:text-gray-300"
+							>
+								Ad Soyad
+							</Label>
+							<Input
+								id="fullName"
+								type="text"
+								value={fullName} // Controlled input based on user typing
+								placeholder={user?.user_metadata?.full_name || 'Ad Soyad'}
+								onChange={(e) => setFullName(e.target.value)}
+								className="mt-1"
+							/>
+						</div>
+						<div>
+							<Label htmlFor="phone" className="text-gray-700 dark:text-gray-300">
+								Telefon Numarası
+							</Label>
+							<Input
+								id="phone"
+								type="tel"
+								value={phone} // Controlled input based on user typing
+								placeholder={user?.user_metadata?.phone || 'Telefon Numarası'}
+								onChange={(e) => setPhone(e.target.value)}
+								className="mt-1"
+							/>
+						</div>
+						<Button type="submit" className="w-full">
+							Profili Güncelle
+						</Button>
+						{profileMessage && (
+							<p className="text-sm text-green-600 dark:text-green-400">
+								{profileMessage}
+							</p>
+						)}
+						{profileError && (
+							<p className="text-sm text-red-600 dark:text-red-400">
+								{profileError}
+							</p>
+						)}
+					</form>
+				</section>
+
+				{/* Change Password Section */}
+				<section className="w-full max-w-md p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+					<h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+						Şifre Değiştir
+					</h2>
+					<form onSubmit={handlePasswordChange} className="space-y-4">
+						{/* 
+              It's good practice to ask for current password, but supabase.auth.updateUser
+              might not require it on the client if "Secure password change" is OFF in Supabase settings.
+              If it IS enabled, this client-side call might fail without re-authentication or an admin client call.
+              For this example, we'll include it, assuming it might be needed or preferred.
+            */}
+						<div>
+							<Label
+								htmlFor="currentPassword"
+								className="text-gray-700 dark:text-gray-300"
+							>
+								Mevcut Şifre
+							</Label>
+							<Input
+								id="currentPassword"
+								type="password"
+								value={currentPassword}
+								onChange={(e) => setCurrentPassword(e.target.value)}
+								className="mt-1"
+								placeholder="Mevcut şifreniz"
+							/>
+						</div>
+						<div>
+							<Label
+								htmlFor="newPassword"
+								className="text-gray-700 dark:text-gray-300"
+							>
+								Yeni Şifre
+							</Label>
+							<Input
+								id="newPassword"
+								type="password"
+								value={newPassword}
+								onChange={(e) => setNewPassword(e.target.value)}
+								className="mt-1"
+								placeholder="En az 6 karakter"
+							/>
+						</div>
+						<div>
+							<Label
+								htmlFor="confirmNewPassword"
+								className="text-gray-700 dark:text-gray-300"
+							>
+								Yeni Şifreyi Onayla
+							</Label>
+							<Input
+								id="confirmNewPassword"
+								type="password"
+								value={confirmNewPassword}
+								onChange={(e) => setConfirmNewPassword(e.target.value)}
+								className="mt-1"
+							/>
+						</div>
+						<Button type="submit" className="w-full">
+							Şifreyi Değiştir
+						</Button>
+						{passwordMessage && (
+							<p className="text-sm text-green-600 dark:text-green-400">
+								{passwordMessage}
+							</p>
+						)}
+						{passwordError && (
+							<p className="text-sm text-red-600 dark:text-red-400">
+								{passwordError}
+							</p>
+						)}
+					</form>
+				</section>
+			</main>
+		</>
 	);
 }
