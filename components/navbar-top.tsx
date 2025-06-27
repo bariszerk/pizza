@@ -136,12 +136,12 @@ export function TopNavbar() {
 										href={link.href}
 										passHref
 										legacyBehavior
-										onClick={() => setIsMobileMenuOpen(false)}
 									>
 										<Button
 											asChild
 											variant="ghost"
 											className="w-full justify-start text-base py-3"
+											onClick={() => setIsMobileMenuOpen(false)}
 										>
 											<a>{link.label}</a>
 										</Button>
