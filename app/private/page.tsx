@@ -139,16 +139,14 @@ export default function PrivatePage() {
 				setPasswordMessage(
 					result.message || 'Şifre başarıyla güncellendi!'
 				);
-				toast.success(result.message || 'Şifre başarıyla güncellendi!');
+				let successMessage = result.message || 'Şifre başarıyla güncellendi!';
+				if (result.requiresEmailConfirmation) {
+					successMessage += ' Onay için lütfen e-postanızı kontrol edin.';
+				}
+				toast.success(successMessage);
 				setCurrentPassword('');
 				setNewPassword('');
 				setConfirmNewPassword('');
-				// If result.requiresEmailConfirmation is true, you might want to inform the user more specifically.
-				if (result.requiresEmailConfirmation) {
-					toast.info(
-						'Onay için lütfen e-postanızı kontrol edin.'
-					);
-				}
 			}
 		} catch (error) {
 			console.error('Password change fetch error:', error);
@@ -246,7 +244,7 @@ export default function PrivatePage() {
 						Şifre Değiştir
 					</h2>
 					<form onSubmit={handlePasswordChange} className="space-y-4">
-						{/*
+						{/* 
               It's good practice to ask for current password, but supabase.auth.updateUser
               might not require it on the client if "Secure password change" is OFF in Supabase settings.
               If it IS enabled, this client-side call might fail without re-authentication or an admin client call.
@@ -265,7 +263,7 @@ export default function PrivatePage() {
 								value={currentPassword}
 								onChange={(e) => setCurrentPassword(e.target.value)}
 								className="mt-1"
-								placeholder="Mevcut şifreniz (gerekliyse)"
+								placeholder="Mevcut şifreniz"
 							/>
 						</div>
 						<div>
