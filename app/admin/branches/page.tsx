@@ -266,17 +266,57 @@ export default function AdminBranchesPage() {
 		setIsSubmitting(true);
 		setFormError(null);
 		try {
-			const { error: insertError } = await supabase
+			// İstemci tarafı ön kontrol (isteğe bağlı ama kullanıcı deneyimi için iyi)
+			const { data: existingBranches, error: fetchError } = await supabase
 				.from('branches')
-				.insert([{ name: newBranchName, address: newBranchAddress || null }]);
-			if (insertError) throw insertError;
+				.select('name')
+				.eq('name', newBranchName.trim());
+
+			if (fetchError) {
+				console.warn("Şube adı kontrolü sırasında hata:", fetchError.message);
+				// Hata durumunda doğrudan sunucuya gitmeyi tercih edebiliriz veya kullanıcıya bildirebiliriz
+				// Şimdilik devam edip sunucu tarafı doğrulamasına güvenelim
+			}
+
+			if (existingBranches && existingBranches.length > 0) {
+				setFormError(
+					`"${newBranchName.trim()}" adında bir şube zaten mevcut. Lütfen farklı bir ad seçin.`
+				);
+				setIsSubmitting(false);
+				return;
+			}
+
+			// Sunucu tarafı API çağrısı
+			const response = await fetch('/api/branch', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					name: newBranchName.trim(),
+					address: newBranchAddress.trim() || null,
+				}),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(
+					errorData.message ||
+						`Şube oluşturulurken bir hata oluştu: ${response.statusText}`
+				);
+			}
+
+			// Başarılı yanıt sonrası
 			setNewBranchName('');
 			setNewBranchAddress('');
-			if (currentUserId && currentUserRole)
-				await fetchData(currentUserId, currentUserRole);
+			if (currentUserId && currentUserRole) {
+				await fetchData(currentUserId, currentUserRole); // Listeyi yenile
+			}
 		} catch (err: unknown) {
 			setFormError(
-				err instanceof Error ? err.message : 'Şube eklenirken bir hata oluştu.'
+				err instanceof Error
+					? err.message
+					: 'Şube eklenirken beklenmedik bir hata oluştu.'
 			);
 		} finally {
 			setIsSubmitting(false);
