@@ -367,7 +367,7 @@ export function DateRangePicker({
 						</Button>
 					</PopoverTrigger>
 				</div>
-				<PopoverContent className="w-auto p-0" align="start">
+				<PopoverContent className="w-auto p-0" align="end">
 					<Calendar
 						mode="single"
 						selected={
