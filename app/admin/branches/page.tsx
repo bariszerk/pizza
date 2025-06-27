@@ -38,7 +38,8 @@ import {
 } from '@/components/ui/table';
 import { createClient } from '@/utils/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Trash2Icon, UserMinusIcon, UserPlusIcon } from 'lucide-react';
+import { DollarSignIcon, Trash2Icon, UserMinusIcon, UserPlusIcon } from 'lucide-react'; // DollarSignIcon eklendi
+import { useRouter } from 'next/navigation'; // useRouter eklendi
 import { useCallback, useEffect, useState } from 'react';
 
 // Tipler
@@ -679,13 +680,10 @@ export default function AdminBranchesPage() {
 														Atanmış Yöneticiler
 													</TableHead>
 												)}
-												<TableHead className="w-[15%] px-2 py-3 sm:px-4">
-													Personel
-												</TableHead>
+												<TableHead className="w-[15%] px-2 py-3 sm:px-4">Personel</TableHead>
+												<TableHead className="w-[15%] px-2 py-3 sm:px-4">Finansal İşlemler</TableHead>
 												{currentUserRole === 'admin' && (
-													<TableHead className="text-right w-[15%] px-2 py-3 sm:px-4">
-														Sil
-													</TableHead>
+													<TableHead className="text-right w-[10%] px-2 py-3 sm:px-4">Sil</TableHead>
 												)}
 											</TableRow>
 										</TableHeader>
@@ -759,6 +757,17 @@ export default function AdminBranchesPage() {
 															onClick={() => openAssignStaffModal(branch)}
 														>
 															Personel Yönetimi
+														</Button>
+													</TableCell>
+													<TableCell className="px-2 py-2 sm:px-4">
+														<Button
+															variant="outline"
+															size="sm"
+															className="text-xs"
+															onClick={() => router.push(`/admin/branch-financials/${branch.id}`)}
+														>
+															<DollarSignIcon className="h-3 w-3 mr-1" />
+															Finansal Veri Girişi
 														</Button>
 													</TableCell>
 													{currentUserRole === 'admin' && (
