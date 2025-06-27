@@ -123,9 +123,15 @@ export async function middleware(request: NextRequest) {
         if (pathname.startsWith('/admin/roles')) {
             return NextResponse.redirect(new URL('/dashboard', request.url), { headers: response.headers });
         }
-        const allowedManagerPaths = ['/dashboard', '/admin/branches', '/private'];
+        // Yöneticinin erişebileceği yollara /admin/branch-financials eklendi
+        const allowedManagerPaths = ['/dashboard', '/admin/branches', '/admin/branch-financials', '/private'];
         if (allowedManagerPaths.some(p => pathname.startsWith(p)) || pathname === '/') {
             return response;
+        }
+        // Eğer izin verilen yollardan biri değilse ve /admin altında bir yere gitmeye çalışıyorsa /admin/branches'e,
+        // aksi halde /dashboard'a yönlendir.
+        if (pathname.startsWith('/admin/')) {
+            return NextResponse.redirect(new URL('/admin/branches', request.url), { headers: response.headers });
         }
         return NextResponse.redirect(new URL('/dashboard', request.url), { headers: response.headers });
     }
