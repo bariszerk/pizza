@@ -30,10 +30,10 @@ type Profile = {
 };
 
 export default function AdminBranchFinancialsPage() {
-	const { branchId: branchIdString } = useParams();
-	const branchId = Array.isArray(branchIdString)
-		? branchIdString[0]
-		: branchIdString;
+	const { branchId: branchNameFromUrl } = useParams(); // Dosya yolu [branchId] olduğu için parametre adı branchId olmalı. Değer şube adını taşıyacak.
+	const branchNameParam = Array.isArray(branchNameFromUrl)
+		? branchNameFromUrl[0]
+		: branchNameFromUrl;
 	const router = useRouter(); // useRouter hook'u
 	const supabase = createClient();
 
@@ -55,11 +55,28 @@ export default function AdminBranchFinancialsPage() {
 	// Yetkilendirme ve Şube Adı Yükleme Fonksiyonu
 	const authorizeAndLoadBranchName = useCallback(async () => {
 		setIsLoadingData(true);
-		if (!branchId) {
-			toast.error('Şube kimliği URL\'de bulunamadı.');
+		if (!branchNameParam) {
+			toast.error('Şube adı URL\'de bulunamadı.');
 			router.push('/admin/branches'); // Admin şube listesine yönlendir
 			return;
 		}
+
+		// Şube adından şube kimliğini al
+		const { data: branchByName, error: branchByNameError } = await supabase
+			.from('branches')
+			.select('id, name')
+			.eq('name', decodeURIComponent(branchNameParam)) // URL'den gelen adı decode et
+			.single();
+
+		if (branchByNameError || !branchByName) {
+			toast.error(`'${decodeURIComponent(branchNameParam)}' adlı şube bulunamadı veya alınamadı.`);
+			router.push('/admin/branches');
+			setIsLoadingData(false);
+			return;
+		}
+		const branchId = branchByName.id;
+		setBranchName(branchByName.name); // State'i gerçek şube adıyla güncelle
+
 
 		const { data: { user } } = await supabase.auth.getUser();
 		if (!user) {
@@ -113,24 +130,33 @@ export default function AdminBranchFinancialsPage() {
 
 		setIsAuthorized(true);
 
-		// Şube adını çek
-		const { data: branchData, error: branchError } = await supabase
-			.from('branches')
-			.select('name')
-			.eq('id', branchId)
-			.single();
+		// Şube adı zaten branchByName.name ile setBranchName aracılığıyla ayarlandı.
+		// Bu yüzden burada tekrar çekmeye gerek yok.
 
-		if (branchError || !branchData) {
-			toast.error('Şube bilgileri alınamadı.');
-			setBranchName('Bilinmeyen Şube');
-		} else {
-			setBranchName(branchData.name);
-		}
 		// Formu burada etkinleştirmiyoruz, loadFinancialData içinde yapacağız
-	}, [branchId, supabase, router]);
+	}, [branchNameParam, supabase, router]); // branchId yerine branchNameParam bağımlılığı
 
 	// Finansal Veri Yükleme Fonksiyonu
 	const loadFinancialData = useCallback(async (dateToLoad: Date) => {
+		// branchId'yi almak için branchNameParam'ı kullan
+		if (!branchNameParam) {
+			setIsLoadingData(false);
+			return;
+		}
+		const { data: branchData, error: branchError } = await supabase
+			.from('branches')
+			.select('id')
+			.eq('name', decodeURIComponent(branchNameParam))
+			.single();
+
+		if (branchError || !branchData) {
+			toast.error("Finansal veri yüklenirken şube kimliği alınamadı.");
+			setIsLoadingData(false);
+			return;
+		}
+		const branchId = branchData.id;
+
+
 		if (!isAuthorized || !branchId) {
 			// Yetki yoksa veya branchId yoksa veri yükleme
 			setIsLoadingData(false);
@@ -172,7 +198,7 @@ export default function AdminBranchFinancialsPage() {
 		} finally {
 			setIsLoadingData(false);
 		}
-	}, [branchId, supabase, isAuthorized, today]);
+	}, [branchNameParam, supabase, isAuthorized, today]); // branchId yerine branchNameParam
 
 	// İlk Yükleme (Yetki ve Şube Adı)
 	useEffect(() => {
@@ -181,10 +207,10 @@ export default function AdminBranchFinancialsPage() {
 
 	// Seçili Tarih veya Yetki Değiştiğinde Finansal Verileri Yükle
 	useEffect(() => {
-		if (isAuthorized && branchId) { // Yetki varsa ve branchId mevcutsa finansal verileri yükle
+		if (isAuthorized && branchNameParam) { // Yetki varsa ve branchNameParam mevcutsa finansal verileri yükle
 			loadFinancialData(selectedDate);
 		}
-	}, [selectedDate, isAuthorized, branchId, loadFinancialData]);
+	}, [selectedDate, isAuthorized, branchNameParam, loadFinancialData]); // branchId yerine branchNameParam
 
 
 	const handleDateSelect = (newDate: Date | undefined) => {
@@ -209,11 +235,25 @@ export default function AdminBranchFinancialsPage() {
 
 		setIsSubmitting(true);
 
-		if (!branchId) {
-			toast.error('Şube kimliği geçersiz. İşlem yapılamıyor.');
+		// branchId'yi almak için branchNameParam'ı kullan
+		if (!branchNameParam) {
+			toast.error('Şube adı geçersiz. İşlem yapılamıyor.');
 			setIsSubmitting(false);
 			return;
 		}
+		const { data: branchData, error: branchError } = await supabase
+			.from('branches')
+			.select('id')
+			.eq('name', decodeURIComponent(branchNameParam))
+			.single();
+
+		if (branchError || !branchData) {
+			toast.error("İşlem sırasında şube kimliği alınamadı.");
+			setIsSubmitting(false);
+			return;
+		}
+		const branchId = branchData.id;
+
 
 		const expensesValue = parseFloat(expenses);
 		const earningsValue = parseFloat(earnings);
