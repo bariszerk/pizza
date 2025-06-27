@@ -53,10 +53,6 @@ export type Preset = {
 	getDateRange: () => DateRange;
 };
 
-const CURRENT_YEAR = new Date().getFullYear();
-const FROM_YEAR = CURRENT_YEAR - 10;
-const TO_YEAR = CURRENT_YEAR + 5;
-
 export const PRESETS_LOCAL: Preset[] = [
 	{
 		label: 'Bugün',
@@ -324,25 +320,6 @@ export function DateRangePicker({
 		return new Date();
 	};
 
-	const displayRangeText = React.useMemo(() => {
-		if (selectedPreset !== 'custom') {
-			const preset = PRESETS_LOCAL.find((p) => p.value === selectedPreset);
-			if (preset) return preset.label;
-		}
-		if (dateRange?.from && isValid(dateRange.from)) {
-			if (dateRange.to && isValid(dateRange.to)) {
-				if (isSameDay(dateRange.from, dateRange.to)) {
-					return formatDateForDisplay(dateRange.from);
-				}
-				return `${formatDateForDisplay(
-					dateRange.from
-				)} - ${formatDateForDisplay(dateRange.to)}`;
-			}
-			return formatDateForDisplay(dateRange.from); // Sadece başlangıç varsa
-		}
-		return 'Tarih Aralığı Seçilmedi';
-	}, [dateRange, selectedPreset]);
-
 	return (
 		<div
 			className={cn('flex flex-col sm:flex-row items-stretch sm:items-center gap-2', className)}
@@ -403,18 +380,12 @@ export function DateRangePicker({
 						onSelect={handleCalendarSelect}
 						defaultMonth={currentMonthForCalendar()}
 						locale={tr}
-						captionLayout="dropdown-buttons"
-						fromYear={FROM_YEAR}
-						toYear={TO_YEAR}
+						captionLayout="dropdown"
+						className="rounded-lg border"
 						disabled={{ after: endOfDay(new Date()) }}
-						initialFocus
 					/>
 				</PopoverContent>
 			</Popover>
-
-			<div className="hidden h-10 items-center justify-center rounded-md border border-input bg-transparent px-3 py-2 text-sm text-muted-foreground min-w-[200px] max-w-[300px] truncate text-center sm:flex">
-				<span title={displayRangeText}>{displayRangeText}</span>
-			</div>
 		</div>
 	);
 }
