@@ -8,25 +8,25 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { LoadingSpinner } from '@/components/ui/loading-spinner'; // LoadingSpinner import edildi
 import { createClient } from '@/utils/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { LogOutIcon, SettingsIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // useRouter import edildi
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, useTransition } from 'react'; // useTransition import edildi
 
 export function UserStatus() {
 	const [session, setSession] = useState<Session | null>(null);
-	const router = useRouter(); // useRouter hook'u kullanıldı
+	const [isLoggingOut, startLogoutTransition] = useTransition(); // Çıkış işlemi için transition
+	const router = useRouter();
 	const supabase = createClient();
 
 	useEffect(() => {
-		// Check for an existing session on component mount
 		supabase.auth.getSession().then(({ data: { session } }) => {
 			setSession(session);
 		});
 
-		// Listen for auth state changes
 		const { data: subscription } = supabase.auth.onAuthStateChange(
 			(_event, session) => {
 				setSession(session);
@@ -37,30 +37,32 @@ export function UserStatus() {
 	}, [supabase.auth]);
 
 	async function handleLogout() {
-		const response = await fetch('/logout', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-		});
+		startLogoutTransition(async () => {
+			const response = await fetch('/logout', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			});
 
-		if (response.ok) {
-			const data = await response.json();
-			if (data.success) {
-				// İstemci tarafında session'ı temizle ve yönlendir
-				await supabase.auth.signOut(); // Bu hala gerekli olabilir, session'ı client'ta temizler
-				router.push('/login');
-				router.refresh(); // Sayfayı yenileyerek state'in güncellenmesini sağla
+			if (response.ok) {
+				const data = await response.json();
+				if (data.success) {
+					await supabase.auth.signOut();
+					router.push('/login');
+					router.refresh();
+				} else {
+					console.error('Logout failed:', data.error);
+					// Kullanıcıya hata mesajı gösterilebilir (örn: toast)
+				}
 			} else {
-				console.error('Logout failed:', data.error);
+				console.error('Logout request failed:', response.statusText);
+				// Kullanıcıya hata mesajı gösterilebilir
 			}
-		} else {
-			console.error('Logout request failed:', response.statusText);
-		}
+		});
 	}
 
 	if (session) {
-		// You can adjust the user object properties as needed.
 		const user = {
 			name: session.user.email,
 			email: session.user.email,
@@ -88,10 +90,16 @@ export function UserStatus() {
 							</div>
 						</Link>
 					</DropdownMenuItem>
-					<DropdownMenuItem onSelect={handleLogout}>
+					<DropdownMenuItem onSelect={handleLogout} disabled={isLoggingOut}>
 						<div className="flex items-center">
-							<LogOutIcon className="mr-2 h-4 w-4" />
-							Çıkış Yap
+							{isLoggingOut ? (
+								<LoadingSpinner size={16} />
+							) : (
+								<LogOutIcon className="mr-2 h-4 w-4" />
+							)}
+							<span className="ml-2">
+								{isLoggingOut ? 'Çıkış Yapılıyor...' : 'Çıkış Yap'}
+							</span>
 						</div>
 					</DropdownMenuItem>
 				</DropdownMenuContent>

@@ -1,6 +1,7 @@
 // app/branch/[id]/page.tsx
 'use client';
 
+import { LoadingSpinner } from '@/components/ui/loading-spinner'; // LoadingSpinner import edildi
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -341,21 +342,27 @@ export default function BranchPage() {
 										className="w-full h-11 text-md font-semibold"
 										disabled={isFormDisabled || isLoadingData || isSubmitting}
 									>
-										{isLoadingData
-											? 'Yükleniyor...'
-											: isSubmitting
-											? 'Kaydediliyor...'
-											: existingRecordId && isSameDay(selectedDate, today)
-											? 'Güncel Kaydı Düzenle'
-											: 'Yeni Kayıt Ekle'}
+										{isSubmitting ? (
+											<div className="flex items-center justify-center">
+												<LoadingSpinner size={16} />
+												<span className="ml-2">Kaydediliyor...</span>
+											</div>
+										) : isLoadingData ? (
+											'Yükleniyor...'
+										) : existingRecordId && isSameDay(selectedDate, today) ? (
+											'Güncel Kaydı Düzenle'
+										) : (
+											'Yeni Kayıt Ekle'
+										)}
 									</Button>
 								</form>
 							</div>
 
 							{isLoadingData && (
-								<p className="text-sm text-center text-muted-foreground py-4">
-									Seçili tarih için veriler yükleniyor, lütfen bekleyin...
-								</p>
+								<div className="text-sm text-center text-muted-foreground py-4 flex items-center justify-center space-x-2">
+									<LoadingSpinner size={16} />
+									<span>Seçili tarih için veriler yükleniyor, lütfen bekleyin...</span>
+								</div>
 							)}
 
 							{isFormDisabled &&
