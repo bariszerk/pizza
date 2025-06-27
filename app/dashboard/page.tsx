@@ -52,10 +52,20 @@ import {
 	PRESETS_LOCAL,
 	getDefaultPresetValueLocal,
 } from './dashboard_pages/date-range-picker';
+// Overview importunu kaldırıp yeni grafikleri import edeceğiz
+// import {
+// 	Overview,
+// 	type OverviewChartDataPoint,
+// } from './dashboard_pages/overview';
 import {
-	Overview,
-	type OverviewChartDataPoint,
-} from './dashboard_pages/overview';
+	NetProfitChart,
+	type NetProfitChartDataPoint,
+} from './dashboard_pages/net-profit-chart';
+import {
+	IncomeExpenseChart,
+	type IncomeExpenseChartDataPoint,
+} from './dashboard_pages/income-expense-chart';
+
 
 type BranchInfo = {
 	id: string;
@@ -76,7 +86,10 @@ type DashboardData = {
 	userRole: string | null;
 	availableBranches: BranchInfo[];
 	selectedBranchId?: string | null;
-	overviewData: OverviewChartDataPoint[];
+	// overviewData'nın tipi artık NetProfitChartDataPoint veya IncomeExpenseChartDataPoint'e göre şekillenecek.
+	// İkisi de temel olarak aynı alanlara sahip (name, originalDate, kazanc, netKar).
+	// IncomeExpenseChartDataPoint ayrıca 'gider' de içerir.
+	overviewData: NetProfitChartDataPoint[]; // Temel olarak NetProfitChartDataPoint kullanalım, gideri aşağıda hesaplarız.
 	totalRevenue: number;
 	totalExpenses: number;
 	totalNetProfit: number;
@@ -542,7 +555,8 @@ function DashboardContent() {
 	};
 
 	const handleChartBarClick = (
-		data: OverviewChartDataPoint,
+		// data parametresinin tipi IncomeExpenseChartDataPoint olmalı, çünkü tıklama bu grafikte olacak.
+		data: IncomeExpenseChartDataPoint,
 		_index: number
 	) => {
 		const clickedDateStr = data.originalDate;
@@ -971,23 +985,41 @@ function DashboardContent() {
 								</Card>
 							</div>
 
-							<div className="grid grid-cols-1 gap-4">
+							<div className="grid grid-cols-1 lg:grid-cols-2 gap-4"> {/* Yan yana için lg:grid-cols-2 */}
 								<Card className="col-span-1">
 									<CardHeader>
-										<CardTitle>Günlük Kazanç ve Net Kâr Grafiği</CardTitle>
+										<CardTitle>Günlük Net Kâr Trendi</CardTitle>
 									</CardHeader>
 									<CardContent className="pl-2">
 										{overviewData && overviewData.length > 0 ? (
-											<Overview
-												data={overviewData}
+											<NetProfitChart data={overviewData} />
+										) : (
+											<div className="flex items-center justify-center h-[350px] text-center">
+												<p className="text-muted-foreground">
+													Net kâr trendi için veri bulunmamaktadır.
+												</p>
+											</div>
+										)}
+									</CardContent>
+								</Card>
+								<Card className="col-span-1">
+									<CardHeader>
+										<CardTitle>Günlük Kazanç ve Gider Dağılımı</CardTitle>
+									</CardHeader>
+									<CardContent className="pl-2">
+										{overviewData && overviewData.length > 0 ? (
+											<IncomeExpenseChart
+												// IncomeExpenseChartDataPoint[] bekliyor, gideri eklemeliyiz
+												data={overviewData.map(d => ({
+													...d,
+													gider: d.kazanc ? (d.kazanc - d.netKar) : 0, // Eğer kazanc tanımsızsa gider 0
+												}))}
 												onBarClick={handleChartBarClick}
 											/>
 										) : (
 											<div className="flex items-center justify-center h-[350px] text-center">
 												<p className="text-muted-foreground">
-													Seçili şube ve tarih aralığı için gösterilecek grafik
-													verisi bulunmamaktadır. <br /> Lütfen farklı bir şube
-													veya tarih aralığı seçmeyi deneyin.
+													Kazanç/gider dağılımı için veri bulunmamaktadır.
 												</p>
 											</div>
 										)}
