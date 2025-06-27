@@ -140,20 +140,20 @@ export default function RoleManagementPage() {
 					exit={{ opacity: 0, y: 20 }}
 					transition={{ duration: 0.4 }}
 				>
-					<div className="overflow-x-auto w-full border rounded-lg">
+					<div className="overflow-x-auto w-full border rounded-lg text-xs sm:text-sm">
 						<Table className="w-full min-w-[700px]">
 							<TableHeader>
 								<TableRow>
-									<TableHead className="w-[30%]">E-posta Adresi</TableHead>
-									<TableHead className="w-[25%]">Ad Soyad</TableHead>
-									<TableHead className="w-[25%]">Kullanıcı Rolü</TableHead>
-									<TableHead className="text-right w-[20%]">İşlemler</TableHead>
+									<TableHead className="w-[30%] px-2 py-3 sm:px-4">E-posta Adresi</TableHead>
+									<TableHead className="w-[25%] px-2 py-3 sm:px-4 hidden sm:table-cell">Ad Soyad</TableHead>
+									<TableHead className="w-[25%] px-2 py-3 sm:px-4">Kullanıcı Rolü</TableHead>
+									<TableHead className="text-right w-[20%] px-2 py-3 sm:px-4">İşlemler</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{profiles.length === 0 && !loading ? (
 									<TableRow>
-										<TableCell colSpan={4} className="text-center py-10">
+										<TableCell colSpan={4} className="text-center py-10 px-2 sm:px-4">
 											Sistemde kayıtlı kullanıcı bulunamadı.
 										</TableCell>
 									</TableRow>
@@ -164,17 +164,17 @@ export default function RoleManagementPage() {
 
 										return (
 											<TableRow key={profile.id}>
-												<TableCell className="font-medium">
+												<TableCell className="font-medium px-2 py-2 sm:px-4">
 													{profile.email || 'Belirtilmemiş'}
 												</TableCell>
-												<TableCell>
+												<TableCell className="px-2 py-2 sm:px-4 hidden sm:table-cell">
 													{profile.first_name || profile.last_name
 														? `${profile.first_name || ''} ${
 																profile.last_name || ''
 														  }`.trim()
 														: 'Belirtilmemiş'}
 												</TableCell>
-												<TableCell>
+												<TableCell className="px-2 py-2 sm:px-4">
 													<Select
 														value={currentRole}
 														onValueChange={(value) =>
@@ -184,7 +184,7 @@ export default function RoleManagementPage() {
 															}))
 														}
 													>
-														<SelectTrigger className="w-full md:w-[200px]">
+														<SelectTrigger className="w-full min-w-[150px] md:w-auto md:min-w-[200px]">
 															<SelectValue
 																placeholder={
 																	currentRole === 'admin'
@@ -209,7 +209,7 @@ export default function RoleManagementPage() {
 														</SelectContent>
 													</Select>
 												</TableCell>
-												<TableCell className="text-right">
+												<TableCell className="text-right px-2 py-2 sm:px-4">
 													<Button
 														size="sm"
 														onClick={() =>

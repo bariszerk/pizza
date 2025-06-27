@@ -855,11 +855,11 @@ function DashboardContent() {
 
 	return (
 		<>
-			<div className="hidden flex-col md:flex">
-				<div className="flex-1 space-y-4 p-8 pt-6">
+			<div className="flex flex-col"> {/* Removed hidden and md:flex */}
+				<div className="flex-1 space-y-4 p-4 md:p-8 pt-6"> {/* Adjusted padding for mobile */}
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
 						<div>
-							<h2 className="text-3xl font-bold tracking-tight">
+							<h2 className="text-2xl sm:text-3xl font-bold tracking-tight"> {/* Responsive font size */}
 								Genel Durum Paneli (
 								{userRole === 'admin' ? 'Yönetici' : 'Müdür'})
 							</h2>
@@ -875,7 +875,7 @@ function DashboardContent() {
 										onValueChange={(value) => handleBranchChange(value)}
 										disabled={pageLoading || availableBranches.length === 0}
 									>
-										<SelectTrigger className="w-auto min-w-[180px] h-10">
+										<SelectTrigger className="w-full sm:w-auto sm:min-w-[180px] h-10">
 											<SelectValue placeholder="Bir şube seçin..." />
 										</SelectTrigger>
 										<SelectContent>
@@ -896,7 +896,7 @@ function DashboardContent() {
 								onDateChange={handleDateChange}
 								initialDateRange={selectedDateRange}
 								initialPresetValue={currentPresetValue}
-								className="min-w-max"
+								className="w-full sm:w-auto" // Replaced min-w-max
 							/>
 						</div>
 					</div>
@@ -1036,7 +1036,7 @@ function DashboardContent() {
 					open={showDailyDetailModal}
 					onOpenChange={setShowDailyDetailModal}
 				>
-					<DialogContent className="sm:max-w-md">
+					<DialogContent className="w-[calc(100%-2rem)] max-w-xs sm:max-w-md">
 						<DialogHeader>
 							<DialogTitle className="flex items-center">
 								<ListChecks className="mr-2 h-5 w-5" />

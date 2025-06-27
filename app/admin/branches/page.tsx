@@ -668,22 +668,22 @@ export default function AdminBranchesPage() {
 										: 'Sistemde kayıtlı herhangi bir şube bulunamadı. Yukarıdaki formdan yeni şube ekleyebilirsiniz.'}
 								</p>
 							) : (
-								<div className="overflow-x-auto">
+								<div className="overflow-x-auto text-xs sm:text-sm">
 									<Table className="min-w-[900px]">
 										<TableHeader>
 											<TableRow>
-												<TableHead className="w-[20%]">Şube Adı</TableHead>
-												<TableHead className="w-[25%]">Adres</TableHead>
+												<TableHead className="w-[20%] px-2 py-3 sm:px-4">Şube Adı</TableHead>
+												<TableHead className="w-[25%] px-2 py-3 sm:px-4 hidden md:table-cell">Adres</TableHead>
 												{currentUserRole === 'admin' && (
-													<TableHead className="w-[25%]">
+													<TableHead className="w-[25%] px-2 py-3 sm:px-4 hidden lg:table-cell">
 														Atanmış Yöneticiler
 													</TableHead>
 												)}
-												<TableHead className="w-[15%]">
+												<TableHead className="w-[15%] px-2 py-3 sm:px-4">
 													Personel
 												</TableHead>
 												{currentUserRole === 'admin' && (
-													<TableHead className="text-right w-[15%]">
+													<TableHead className="text-right w-[15%] px-2 py-3 sm:px-4">
 														Sil
 													</TableHead>
 												)}
@@ -692,14 +692,14 @@ export default function AdminBranchesPage() {
 										<TableBody>
 											{branchesToDisplay.map((branch) => (
 												<TableRow key={branch.id}>
-													<TableCell className="font-medium">
+													<TableCell className="font-medium px-2 py-2 sm:px-4">
 														{branch.name}
 													</TableCell>
-													<TableCell>
+													<TableCell className="px-2 py-2 sm:px-4 hidden md:table-cell">
 														{branch.address || 'Adres belirtilmemiş'}
 													</TableCell>
 													{currentUserRole === 'admin' && (
-														<TableCell>
+														<TableCell className="px-2 py-2 sm:px-4 hidden lg:table-cell">
 															{branch.assigned_managers &&
 															branch.assigned_managers.length > 0 ? (
 																<ul className="space-y-1">
@@ -745,7 +745,7 @@ export default function AdminBranchesPage() {
 															</Button>
 														</TableCell>
 													)}
-													<TableCell>
+													<TableCell className="px-2 py-2 sm:px-4">
 														<span className="text-xs block mb-1">
 															{branch.assigned_staff
 																? branch.assigned_staff.length
@@ -762,7 +762,7 @@ export default function AdminBranchesPage() {
 														</Button>
 													</TableCell>
 													{currentUserRole === 'admin' && (
-														<TableCell className="text-right">
+														<TableCell className="text-right px-2 py-2 sm:px-4">
 															<Button
 																variant="destructive"
 																size="sm"

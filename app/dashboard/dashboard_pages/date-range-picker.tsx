@@ -345,10 +345,10 @@ export function DateRangePicker({
 
 	return (
 		<div
-			className={cn('flex flex-col sm:flex-row items-center gap-2', className)}
+			className={cn('flex flex-col sm:flex-row items-stretch sm:items-center gap-2', className)}
 		>
 			<Select value={selectedPreset} onValueChange={handlePresetChange}>
-				<SelectTrigger className="w-full sm:w-auto min-w-[150px] h-10">
+				<SelectTrigger className="w-full sm:w-[280px] h-10">
 					<SelectValue placeholder="Tarih Aralığı Seçin" />
 				</SelectTrigger>
 				<SelectContent>
@@ -361,12 +361,12 @@ export function DateRangePicker({
 			</Select>
 
 			<Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-				<div className="flex items-center gap-2">
+				<div className="flex flex-col items-stretch space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2 sm:gap-0 sm:w-[280px]">
 					<PopoverTrigger asChild>
 						<Button
 							variant="outline"
 							className={cn(
-								'w-full sm:w-[160px] justify-start text-left font-normal h-10', // Genişlik artırıldı
+								'w-full sm:flex-1 justify-start text-left font-normal h-10', // Genişlik artırıldı
 								!dateRange?.from && 'text-muted-foreground'
 							)}
 							onClick={() => handleDateInputClick('from')}
@@ -380,7 +380,7 @@ export function DateRangePicker({
 						<Button
 							variant="outline"
 							className={cn(
-								'w-full sm:w-[160px] justify-start text-left font-normal h-10', // Genişlik artırıldı
+								'w-full sm:flex-1 justify-start text-left font-normal h-10', // Genişlik artırıldı
 								!dateRange?.to && 'text-muted-foreground'
 							)}
 							onClick={() => handleDateInputClick('to')}
