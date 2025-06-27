@@ -84,6 +84,7 @@ export default function AdminBranchesPage() {
 	const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
 	const [showAddManagerModal, setShowAddManagerModal] = useState(false);
+	const router = useRouter();
 	const [
 		selectedBranchForManagerAssignment,
 		setSelectedBranchForManagerAssignment,

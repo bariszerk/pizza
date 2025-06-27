@@ -18,23 +18,26 @@ export function TopNavbar() {
 	//  console.log('TopNavbar auth state:', { role, staffBranchId, authLoading });
 	// }, [role, staffBranchId, authLoading]);
 
-	const baseNavLinks = [
-		{
-			href: '/dashboard',
-			label: 'Kontrol Paneli',
-			roles: ['manager', 'admin'],
-		},
-		{
-			href: '/admin/roles',
-			label: 'Rol Yönetimi',
-			roles: ['admin'],
-		},
-		{
-			href: '/admin/branches',
-			label: 'Şube Yönetimi',
-			roles: ['admin', 'manager'],
-		},
-	];
+	const baseNavLinks = useMemo(
+		() => [
+			{
+				href: '/dashboard',
+				label: 'Kontrol Paneli',
+				roles: ['manager', 'admin'],
+			},
+			{
+				href: '/admin/roles',
+				label: 'Rol Yönetimi',
+				roles: ['admin'],
+			},
+			{
+				href: '/admin/branches',
+				label: 'Şube Yönetimi',
+				roles: ['admin', 'manager'],
+			},
+		],
+		[]
+	);
 
 	const dynamicNavLinks = useMemo(() => {
 		const links = [...baseNavLinks];
