@@ -35,8 +35,10 @@ export default function PrivatePage() {
 				router.push('/login');
 			} else {
 				setUser(data.user);
-				setFullName(data.user.user_metadata?.full_name || '');
-				setPhone(data.user.user_metadata?.phone || '');
+				// Initialize fullName and phone state for user input, leave them empty initially
+				// The fetched metadata will be used for placeholders.
+				// setFullName(data.user.user_metadata?.full_name || ''); // Keep for input value
+				// setPhone(data.user.user_metadata?.phone || ''); // Keep for input value
 			}
 			setLoading(false);
 		};
@@ -50,8 +52,35 @@ export default function PrivatePage() {
 
 		if (!user) return;
 
+		// Use fullName and phone states which hold the user's input.
+		// If they are empty, it means the user wants to clear these fields.
+		const dataToUpdate: { full_name?: string; phone?: string } = {};
+		if (fullName.trim() === '' && user.user_metadata?.full_name) {
+			dataToUpdate.full_name = ''; // Explicitly set to empty if was not empty before
+		} else if (fullName.trim() !== '') {
+			dataToUpdate.full_name = fullName.trim();
+		}
+
+		if (phone.trim() === '' && user.user_metadata?.phone) {
+			dataToUpdate.phone = ''; // Explicitly set to empty if was not empty before
+		} else if (phone.trim() !== '') {
+			dataToUpdate.phone = phone.trim();
+		}
+
+
+		// Only update if there's something to update
+		if (Object.keys(dataToUpdate).length === 0 && fullName === '' && phone === '') {
+		    // If both inputs are empty AND there was no previous data, do nothing or inform user.
+		    // Or if inputs match existing placeholder data and are not explicitly cleared.
+		    // For simplicity, let's assume if the state variables fullName and phone are empty,
+		    // and they were also empty in metadata, no update call is needed unless explicitly cleared.
+		    // This logic might need refinement based on desired UX for clearing fields.
+		    // Current logic: if input is empty string, it will try to set it to empty string.
+		}
+
+
 		const { error } = await supabase.auth.updateUser({
-			data: { full_name: fullName, phone: phone },
+			data: dataToUpdate,
 		});
 
 		if (error) {
@@ -176,7 +205,8 @@ export default function PrivatePage() {
 							<Input
 								id="fullName"
 								type="text"
-								value={fullName}
+								value={fullName} // Controlled input based on user typing
+								placeholder={user?.user_metadata?.full_name || 'Ad Soyad'}
 								onChange={(e) => setFullName(e.target.value)}
 								className="mt-1"
 							/>
@@ -188,7 +218,8 @@ export default function PrivatePage() {
 							<Input
 								id="phone"
 								type="tel"
-								value={phone}
+								value={phone} // Controlled input based on user typing
+								placeholder={user?.user_metadata?.phone || 'Telefon Numarası'}
 								onChange={(e) => setPhone(e.target.value)}
 								className="mt-1"
 							/>
