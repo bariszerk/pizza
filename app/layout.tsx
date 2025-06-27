@@ -14,7 +14,9 @@ export default function RootLayout({
 	useAutoSignOut(10);
 	return (
 		<html lang="tr" suppressHydrationWarning>
-			<head />
+			<head>
+				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+			</head>
 			<body>
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
 					<TopNavbar />
