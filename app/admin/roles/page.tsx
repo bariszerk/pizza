@@ -140,20 +140,124 @@ export default function RoleManagementPage() {
 					exit={{ opacity: 0, y: 20 }}
 					transition={{ duration: 0.4 }}
 				>
-					<div className="overflow-x-auto w-full border rounded-lg text-xs sm:text-sm">
-						<Table className="w-full min-w-[700px]">
+					{/* Mobil görünüm için Kart Listesi */}
+					<div className="space-y-4 md:hidden">
+						{profiles.length === 0 && !loading ? (
+							<p className="text-center py-10">
+								Sistemde kayıtlı kullanıcı bulunamadı.
+							</p>
+						) : (
+							profiles.map((profile) => {
+								const currentRole = changes[profile.id] ?? profile.role;
+								const hasChanged = currentRole !== profile.role;
+								return (
+									<div
+										key={`${profile.id}-mobile`}
+										className="border rounded-lg p-4 space-y-3 text-sm bg-card"
+									>
+										<div>
+											<h3 className="font-semibold text-base">
+												{profile.first_name || profile.last_name
+													? `${profile.first_name || ''} ${
+															profile.last_name || ''
+													  }`.trim()
+													: 'İsim Belirtilmemiş'}
+											</h3>
+											<p className="text-xs text-muted-foreground">
+												{profile.email || 'E-posta Belirtilmemiş'}
+											</p>
+										</div>
+
+										<div>
+											<label
+												htmlFor={`role-select-${profile.id}-mobile`}
+												className="block text-xs font-medium text-muted-foreground mb-1"
+											>
+												Kullanıcı Rolü
+											</label>
+											<Select
+												value={currentRole}
+												onValueChange={(value) =>
+													setChanges((prev) => ({
+														...prev,
+														[profile.id]: value,
+													}))
+												}
+											>
+												<SelectTrigger
+													id={`role-select-${profile.id}-mobile`}
+													className="w-full"
+												>
+													<SelectValue
+														placeholder={
+															currentRole === 'admin'
+																? 'Yönetici'
+																: currentRole === 'manager'
+																? 'Müdür'
+																: currentRole === 'branch_staff'
+																? 'Şube Personeli'
+																: currentRole === 'user'
+																? 'Kullanıcı'
+																: profile.role
+														}
+													/>
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="admin">Yönetici</SelectItem>
+													<SelectItem value="manager">Müdür</SelectItem>
+													<SelectItem value="branch_staff">
+														Şube Personeli
+													</SelectItem>
+													<SelectItem value="user">Kullanıcı</SelectItem>
+												</SelectContent>
+											</Select>
+										</div>
+
+										<Button
+											size="sm"
+											className="w-full"
+											onClick={() =>
+												handleUpdateClick(profile.id, currentRole)
+											}
+											disabled={!hasChanged || saving[profile.id]}
+											variant={hasChanged ? 'default' : 'outline'}
+										>
+											{saving[profile.id]
+												? 'Kaydediliyor...'
+												: 'Rolü Güncelle'}
+										</Button>
+									</div>
+								);
+							})
+						)}
+					</div>
+
+					{/* Tablet ve üzeri için Tablo görünümü */}
+					<div className="hidden md:block overflow-x-auto w-full border rounded-lg text-xs sm:text-sm">
+						<Table className="w-full min-w-[600px]">
 							<TableHeader>
 								<TableRow>
-									<TableHead className="w-[30%] px-2 py-3 sm:px-4">E-posta Adresi</TableHead>
-									<TableHead className="w-[25%] px-2 py-3 sm:px-4 hidden sm:table-cell">Ad Soyad</TableHead>
-									<TableHead className="w-[25%] px-2 py-3 sm:px-4">Kullanıcı Rolü</TableHead>
-									<TableHead className="text-right w-[20%] px-2 py-3 sm:px-4">İşlemler</TableHead>
+									<TableHead className="w-[35%] px-2 py-3 sm:px-4">
+										E-posta Adresi
+									</TableHead>
+									<TableHead className="w-[25%] px-2 py-3 sm:px-4">
+										Ad Soyad
+									</TableHead>
+									<TableHead className="w-[25%] px-2 py-3 sm:px-4">
+										Kullanıcı Rolü
+									</TableHead>
+									<TableHead className="text-right w-[15%] px-2 py-3 sm:px-4">
+										İşlemler
+									</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{profiles.length === 0 && !loading ? (
 									<TableRow>
-										<TableCell colSpan={4} className="text-center py-10 px-2 sm:px-4">
+										<TableCell
+											colSpan={4}
+											className="text-center py-10 px-2 sm:px-4"
+										>
 											Sistemde kayıtlı kullanıcı bulunamadı.
 										</TableCell>
 									</TableRow>
@@ -167,7 +271,7 @@ export default function RoleManagementPage() {
 												<TableCell className="font-medium px-2 py-2 sm:px-4">
 													{profile.email || 'Belirtilmemiş'}
 												</TableCell>
-												<TableCell className="px-2 py-2 sm:px-4 hidden sm:table-cell">
+												<TableCell className="px-2 py-2 sm:px-4">
 													{profile.first_name || profile.last_name
 														? `${profile.first_name || ''} ${
 																profile.last_name || ''
@@ -184,7 +288,7 @@ export default function RoleManagementPage() {
 															}))
 														}
 													>
-														<SelectTrigger className="w-full min-w-[150px] md:w-auto md:min-w-[200px]">
+														<SelectTrigger className="w-full min-w-[150px] lg:w-auto lg:min-w-[180px]">
 															<SelectValue
 																placeholder={
 																	currentRole === 'admin'

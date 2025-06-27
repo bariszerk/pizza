@@ -20,7 +20,7 @@ export default function RootLayout({
 			<body>
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
 					<TopNavbar />
-					<main className="container mx-auto p-4">
+					<main className="container mx-auto">
 						<TransitionWrapper>{children}</TransitionWrapper>
 					</main>
 					<Toaster richColors position="top-right" /> {/* Toaster eklendi */}
