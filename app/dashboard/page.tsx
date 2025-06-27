@@ -440,6 +440,7 @@ function DashboardContent() {
 		if (!authLoading && user && userRoleFromAuth) {
 			initializeDashboard();
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [user, userRoleFromAuth, authLoading]);
 
 	useEffect(() => {
@@ -587,8 +588,8 @@ function DashboardContent() {
 				}),
 				branchName: branchName,
 				earnings: data.kazanc,
-				expenses: data.kazanc - data.netKar,
-				netProfit: data.netKar,
+				expenses: data.kazanc - (data.netKar ?? 0),
+				netProfit: data.netKar ?? 0,
 				summary: 'Bu gün için detaylı özet kaydı bulunamadı.',
 			});
 		}
@@ -1012,7 +1013,8 @@ function DashboardContent() {
 												// IncomeExpenseChartDataPoint[] bekliyor, gideri eklemeliyiz
 												data={overviewData.map(d => ({
 													...d,
-													gider: d.kazanc ? (d.kazanc - d.netKar) : 0, // Eğer kazanc tanımsızsa gider 0
+													kazanc: d.kazanc ?? 0,
+													gider: (d.kazanc ?? 0) - d.netKar, // Eğer kazanc tanımsızsa gider 0
 												}))}
 												onBarClick={handleChartBarClick}
 											/>
