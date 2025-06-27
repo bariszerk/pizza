@@ -37,6 +37,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
+import { LoadingSpinner } from '@/components/ui/loading-spinner'; // LoadingSpinner import edildi
 import {
 	Select,
 	SelectContent,
@@ -1082,8 +1083,9 @@ export default function DashboardPageWrapper() {
 		// Suspense fallback mesajı da Türkçeleştirildi
 		<Suspense
 			fallback={
-				<div className="flex-1 space-y-4 p-8 pt-6 text-center">
-					Gösterge paneli yükleniyor, lütfen bekleyin...
+				<div className="flex-1 space-y-4 p-8 pt-6 text-center flex flex-col items-center justify-center">
+					<LoadingSpinner size={32} />
+					<p className="mt-2">Gösterge paneli yükleniyor, lütfen bekleyin...</p>
 				</div>
 			}
 		>

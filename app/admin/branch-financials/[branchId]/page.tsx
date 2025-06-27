@@ -1,6 +1,7 @@
 // app/admin/branch-financials/[branchId]/page.tsx
 'use client';
 
+import { LoadingSpinner } from '@/components/ui/loading-spinner'; // LoadingSpinner import edildi
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -326,7 +327,8 @@ export default function AdminBranchFinancialsPage() {
 
 	if (isLoadingData && !branchName) { // Henüz şube adı veya yetki yüklenmemişse genel yükleme
 		return (
-			<div className="container mx-auto px-4 py-8 md:py-12 text-center">
+			<div className="container mx-auto px-4 py-8 md:py-12 text-center flex flex-col items-center justify-center space-y-3">
+				<LoadingSpinner size={32} />
 				<p>Sayfa yükleniyor, lütfen bekleyin...</p>
 			</div>
 		);
@@ -445,21 +447,27 @@ export default function AdminBranchFinancialsPage() {
 										className="w-full h-11 text-md font-semibold"
 										disabled={isFormDisabled || isLoadingData || isSubmitting}
 									>
-										{isLoadingData
-											? 'Yükleniyor...'
-											: isSubmitting
-											? 'Kaydediliyor...'
-											: existingRecordId
-											? 'Kaydı Güncelle'
-											: 'Yeni Kayıt Ekle'}
+										{isSubmitting ? (
+											<div className="flex items-center justify-center">
+												<LoadingSpinner size={16} />
+												<span className="ml-2">Kaydediliyor...</span>
+											</div>
+										) : isLoadingData ? (
+											'Yükleniyor...'
+										) : existingRecordId ? (
+											'Kaydı Güncelle'
+										) : (
+											'Yeni Kayıt Ekle'
+										)}
 									</Button>
 								</form>
 							</div>
 
-							{isLoadingData && !isSubmitting && ( // Sadece veri yüklenirken ve submit değilken göster
-								<p className="text-sm text-center text-muted-foreground py-4">
-									Seçili tarih için veriler yükleniyor, lütfen bekleyin...
-								</p>
+							{isLoadingData && !isSubmitting && (
+								<div className="text-sm text-center text-muted-foreground py-4 flex items-center justify-center space-x-2">
+									<LoadingSpinner size={16} />
+									<span>Seçili tarih için veriler yükleniyor, lütfen bekleyin...</span>
+								</div>
 							)}
 
 							{isFormDisabled && !isLoadingData && !isSubmitting && isBefore(today, selectedDate) && (

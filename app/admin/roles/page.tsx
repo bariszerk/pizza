@@ -9,6 +9,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select';
+import { LoadingSpinner } from '@/components/ui/loading-spinner'; // LoadingSpinner import edildi
 import {
 	Table,
 	TableBody,
@@ -19,7 +20,7 @@ import {
 } from '@/components/ui/table';
 import { createClient } from '@/utils/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react'; // useTransition import edildi
 import { toast } from 'sonner';
 
 type Profile = {
@@ -32,11 +33,13 @@ type Profile = {
 
 export default function RoleManagementPage() {
 	const [profiles, setProfiles] = useState<Profile[]>([]);
-	const [loading, setLoading] = useState<boolean>(true); // Başlangıçta true olmalı
+	const [isLoadingProfiles, startProfileLoadingTransition] = useTransition();
 	const [error, setError] = useState<string | null>(null);
 
 	const [changes, setChanges] = useState<{ [id: string]: string }>({});
-	const [saving, setSaving] = useState<{ [id: string]: boolean }>({});
+	const [isSavingRole, startSavingRoleTransition] = useTransition();
+	const [savingStates, setSavingStates] = useState<{ [id: string]: boolean }>({});
+
 
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const [confirmTarget, setConfirmTarget] = useState<{
@@ -46,20 +49,20 @@ export default function RoleManagementPage() {
 
 	const supabase = createClient();
 
-	const fetchProfiles = async () => {
-		setLoading(true);
-		setError(null);
-		const { data, error: fetchError } = await supabase
-			.from('profiles')
-			.select('id, first_name, last_name, role, email');
+	const fetchProfiles = () => {
+		startProfileLoadingTransition(async () => {
+			setError(null);
+			const { data, error: fetchError } = await supabase
+				.from('profiles')
+				.select('id, first_name, last_name, role, email');
 
-		if (fetchError) {
-			setError(`Kullanıcı verileri çekilirken bir hata oluştu: ${fetchError.message}`);
-			toast.error(`Veri çekme hatası: ${fetchError.message}`);
-		} else {
-			setProfiles(data as Profile[]);
-		}
-		setLoading(false);
+			if (fetchError) {
+				setError(`Kullanıcı verileri çekilirken bir hata oluştu: ${fetchError.message}`);
+				toast.error(`Veri çekme hatası: ${fetchError.message}`);
+			} else {
+				setProfiles(data as Profile[]);
+			}
+		});
 	};
 
 	useEffect(() => {
@@ -67,31 +70,32 @@ export default function RoleManagementPage() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	const updateRole = async (id: string, newRole: string) => {
-		setSaving((prev) => ({ ...prev, [id]: true }));
+	const updateRole = (id: string, newRole: string) => {
+		setSavingStates((prev) => ({ ...prev, [id]: true }));
+		startSavingRoleTransition(async () => {
+			const { error: updateError } = await supabase
+				.from('profiles')
+				.update({ role: newRole })
+				.eq('id', id);
 
-		const { error: updateError } = await supabase
-			.from('profiles')
-			.update({ role: newRole })
-			.eq('id', id);
-
-		if (updateError) {
-			toast.error(`Rol güncellenirken hata: ${updateError.message}`);
-			setError(`Rol güncellenirken hata: ${updateError.message}`);
-		} else {
-			toast.success('Kullanıcı rolü başarıyla güncellendi.');
-			setProfiles((prev) =>
-				prev.map((profile) =>
-					profile.id === id ? { ...profile, role: newRole } : profile
-				)
-			);
-			setChanges((prev) => {
-				const updated = { ...prev };
-				delete updated[id];
-				return updated;
-			});
-		}
-		setSaving((prev) => ({ ...prev, [id]: false }));
+			if (updateError) {
+				toast.error(`Rol güncellenirken hata: ${updateError.message}`);
+				setError(`Rol güncellenirken hata: ${updateError.message}`);
+			} else {
+				toast.success('Kullanıcı rolü başarıyla güncellendi.');
+				setProfiles((prev) =>
+					prev.map((profile) =>
+						profile.id === id ? { ...profile, role: newRole } : profile
+					)
+				);
+				setChanges((prev) => {
+					const updated = { ...prev };
+					delete updated[id];
+					return updated;
+				});
+			}
+			setSavingStates((prev) => ({ ...prev, [id]: false }));
+		});
 	};
 
 	const handleUpdateClick = (id: string, currentRole: string) => {
@@ -106,14 +110,16 @@ export default function RoleManagementPage() {
 		setConfirmOpen(false);
 	};
 
-	if (loading) {
+	if (isLoadingProfiles && profiles.length === 0) {
 		return (
-			<div className="flex items-center justify-center py-20">
+			<div className="flex flex-col items-center justify-center py-20 space-y-3">
+				<LoadingSpinner size={32} />
 				<p>Kullanıcı rolleri yükleniyor, lütfen bekleyin...</p>
 			</div>
 		);
 	}
-	if (error && profiles.length === 0) { // Sadece hiç profil yüklenemediyse bu hatayı göster
+
+	if (error && profiles.length === 0) {
 		return (
 			<div className="container mx-auto px-4 py-6 text-destructive">
 				<p>Hata: {error}</p>
@@ -142,7 +148,7 @@ export default function RoleManagementPage() {
 				>
 					{/* Mobil görünüm için Kart Listesi */}
 					<div className="space-y-4 md:hidden">
-						{profiles.length === 0 && !loading ? (
+						{profiles.length === 0 && !isLoadingProfiles ? (
 							<p className="text-center py-10">
 								Sistemde kayıtlı kullanıcı bulunamadı.
 							</p>
@@ -150,6 +156,7 @@ export default function RoleManagementPage() {
 							profiles.map((profile) => {
 								const currentRole = changes[profile.id] ?? profile.role;
 								const hasChanged = currentRole !== profile.role;
+								const isCurrentlySaving = savingStates[profile.id] || (isSavingRole && confirmTarget?.id === profile.id);
 								return (
 									<div
 										key={`${profile.id}-mobile`}
@@ -183,6 +190,7 @@ export default function RoleManagementPage() {
 														[profile.id]: value,
 													}))
 												}
+												disabled={isCurrentlySaving}
 											>
 												<SelectTrigger
 													id={`role-select-${profile.id}-mobile`}
@@ -219,12 +227,17 @@ export default function RoleManagementPage() {
 											onClick={() =>
 												handleUpdateClick(profile.id, currentRole)
 											}
-											disabled={!hasChanged || saving[profile.id]}
+											disabled={!hasChanged || isCurrentlySaving}
 											variant={hasChanged ? 'default' : 'outline'}
 										>
-											{saving[profile.id]
-												? 'Kaydediliyor...'
-												: 'Rolü Güncelle'}
+											{isCurrentlySaving ? (
+												<div className="flex items-center justify-center">
+													<LoadingSpinner size={16} />
+													<span className="ml-2">Kaydediliyor...</span>
+												</div>
+											) : (
+												'Rolü Güncelle'
+											)}
 										</Button>
 									</div>
 								);
@@ -252,7 +265,7 @@ export default function RoleManagementPage() {
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{profiles.length === 0 && !loading ? (
+								{profiles.length === 0 && !isLoadingProfiles ? (
 									<TableRow>
 										<TableCell
 											colSpan={4}
@@ -265,6 +278,7 @@ export default function RoleManagementPage() {
 									profiles.map((profile) => {
 										const currentRole = changes[profile.id] ?? profile.role;
 										const hasChanged = currentRole !== profile.role;
+										const isCurrentlySaving = savingStates[profile.id] || (isSavingRole && confirmTarget?.id === profile.id);
 
 										return (
 											<TableRow key={profile.id}>
@@ -287,6 +301,7 @@ export default function RoleManagementPage() {
 																[profile.id]: value,
 															}))
 														}
+														disabled={isCurrentlySaving}
 													>
 														<SelectTrigger className="w-full min-w-[150px] lg:w-auto lg:min-w-[180px]">
 															<SelectValue
@@ -319,12 +334,17 @@ export default function RoleManagementPage() {
 														onClick={() =>
 															handleUpdateClick(profile.id, currentRole)
 														}
-														disabled={!hasChanged || saving[profile.id]}
+														disabled={!hasChanged || isCurrentlySaving}
 														variant={hasChanged ? 'default' : 'outline'}
 													>
-														{saving[profile.id]
-															? 'Kaydediliyor...'
-															: 'Rolü Güncelle'}
+														{isCurrentlySaving ? (
+															<div className="flex items-center justify-center">
+																<LoadingSpinner size={16} />
+																<span className="ml-2">Kaydediliyor...</span>
+															</div>
+														) : (
+															'Rolü Güncelle'
+														)}
 													</Button>
 												</TableCell>
 											</TableRow>
