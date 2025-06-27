@@ -25,10 +25,10 @@ type BranchFinancial = {
 };
 
 export default function BranchPage() {
-	const { id: branchIdString } = useParams();
-	const branchId = Array.isArray(branchIdString)
-		? branchIdString[0]
-		: branchIdString;
+	const { id: branchNameFromUrl } = useParams(); // Dosya yolu [id] olduğu için parametre adı id olmalı. Değer şube adını taşıyacak.
+	const branchNameParam = Array.isArray(branchNameFromUrl)
+		? branchNameFromUrl[0]
+		: branchNameFromUrl;
 
 	const [expenses, setExpenses] = useState('');
 	const [earnings, setEarnings] = useState('');
@@ -47,9 +47,9 @@ export default function BranchPage() {
 	const yesterday = useMemo(() => startOfDay(subDays(today, 1)), [today]);
 
 	useEffect(() => {
-		if (!branchId) {
+		if (!branchNameParam) { // branchId'yi branchNameParam olarak değiştir
 			setIsLoadingData(false);
-			toast.error('Şube kimliği bulunamadı. Lütfen tekrar deneyin.');
+			toast.error('Şube adı bulunamadı. Lütfen tekrar deneyin.'); // Mesajı güncelle
 			setIsFormDisabled(true); // Formu devre dışı bırak
 			return;
 		}
@@ -62,13 +62,29 @@ export default function BranchPage() {
 			setExistingRecordId(null);
 			setIsFormDisabled(false); // Başlangıçta formu etkinleştir
 
+			// Şube adından şube kimliğini al
+			const { data: branchByName, error: branchByNameError } = await supabase
+				.from('branches')
+				.select('id')
+				.eq('name', decodeURIComponent(branchNameParam)) // URL'den gelen adı decode et
+				.single();
+
+			if (branchByNameError || !branchByName) {
+				toast.error(`'${decodeURIComponent(branchNameParam)}' adlı şube için veri yüklenemedi.`);
+				setIsLoadingData(false);
+				setIsFormDisabled(true);
+				return;
+			}
+			const currentBranchId = branchByName.id;
+
+
 			const dateStr = format(dateToLoad, 'yyyy-MM-dd');
 
 			try {
 				const { data, error } = await supabase
 					.from('branch_financials')
 					.select('*')
-					.eq('branch_id', branchId)
+					.eq('branch_id', currentBranchId) // branchId'yi currentBranchId olarak değiştir
 					.eq('date', dateStr)
 					.single();
 
@@ -108,7 +124,7 @@ export default function BranchPage() {
 		};
 
 		loadData(selectedDate);
-	}, [selectedDate, branchId, supabase, today, yesterday]);
+	}, [selectedDate, branchNameParam, supabase, today, yesterday]); // branchId'yi branchNameParam olarak değiştir
 
 	const handleDateSelect = (newDate: Date | undefined) => {
 		if (newDate && !isSameDay(newDate, selectedDate)) {
@@ -122,11 +138,25 @@ export default function BranchPage() {
 
 		setIsSubmitting(true);
 
-		if (!branchId) {
-			toast.error('Şube kimliği geçersiz. İşlem yapılamıyor.');
+		// Şube adından şube kimliğini al
+		if (!branchNameParam) { // branchId'yi branchNameParam olarak değiştir
+			toast.error('Şube adı geçersiz. İşlem yapılamıyor.'); // Mesajı güncelle
 			setIsSubmitting(false);
 			return;
 		}
+		const { data: branchByName, error: branchByNameError } = await supabase
+			.from('branches')
+			.select('id')
+			.eq('name', decodeURIComponent(branchNameParam)) // URL'den gelen adı decode et
+			.single();
+
+		if (branchByNameError || !branchByName) {
+			toast.error(`'${decodeURIComponent(branchNameParam)}' adlı şube için işlem yapılamadı.`);
+			setIsSubmitting(false);
+			return;
+		}
+		const currentBranchId = branchByName.id;
+
 
 		const expensesValue = parseFloat(expenses);
 		const earningsValue = parseFloat(earnings);
@@ -152,7 +182,7 @@ export default function BranchPage() {
 		}
 
 		const payload: Omit<BranchFinancial, 'id' | 'created_at'> = {
-			branch_id: branchId,
+			branch_id: currentBranchId, // branchId'yi currentBranchId olarak değiştir
 			expenses: expensesValue,
 			earnings: earningsValue,
 			summary,

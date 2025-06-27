@@ -779,7 +779,7 @@ export default function AdminBranchesPage() {
 															className="text-xs"
 															onClick={() =>
 																router.push(
-																	`/admin/branch-financials/${branch.id}`
+																	`/admin/branch-financials/${encodeURIComponent(branch.name)}`
 																)
 															}
 														>

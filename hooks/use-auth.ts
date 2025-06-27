@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 interface Profile {
     role: string | null;
     staff_branch_id: string | null;
+    staff_branch_name?: string | null; // Şube adını tutmak için eklendi
     // Add other profile fields if necessary
 }
 
@@ -18,6 +19,7 @@ interface AuthState {
     profile: Profile | null;
     role: string | null;
     staffBranchId: string | null;
+    staffBranchName: string | null; // Şube adını state'e ekle
     loading: boolean;
     error: Error | null;
 }
@@ -32,6 +34,7 @@ export function useAuth(): AuthState {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [role, setRole] = useState<string | null>(null);
     const [staffBranchId, setStaffBranchId] = useState<string | null>(null);
+    const [staffBranchName, setStaffBranchName] = useState<string | null>(null); // Şube adı için state
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
 
@@ -68,6 +71,7 @@ export function useAuth(): AuthState {
                 setProfile(null);
                 setRole(null);
                 setStaffBranchId(null);
+                setStaffBranchName(null); // Şube adını da sıfırla
                 fetchedProfileForUserIdRef.current = null;
                 // Do not throw, allow auth state to settle even if profile fails
             } else if (profileData) {
@@ -76,11 +80,33 @@ export function useAuth(): AuthState {
                 setRole(profileData.role);
                 setStaffBranchId(profileData.staff_branch_id);
                 fetchedProfileForUserIdRef.current = userId;
+
+                // Şube ID'si varsa, şube adını çek
+                if (profileData.staff_branch_id) {
+                    const { data: branchData, error: branchError } = await supabase
+                        .from('branches')
+                        .select('name')
+                        .eq('id', profileData.staff_branch_id)
+                        .single();
+
+                    if (!mountedRef.current) return;
+                    if (branchError) {
+                        console.warn('useAuth: Branch name fetch error:', branchError.message);
+                        setStaffBranchName(null);
+                    } else if (branchData) {
+                        setStaffBranchName(branchData.name);
+                    } else {
+                        setStaffBranchName(null);
+                    }
+                } else {
+                    setStaffBranchName(null); // Şube ID'si yoksa adı da null yap
+                }
             } else {
                 console.warn('useAuth: No profile data found for user ID:', userId);
                 setProfile(null);
                 setRole(null);
                 setStaffBranchId(null);
+                setStaffBranchName(null); // Şube adını da sıfırla
                 fetchedProfileForUserIdRef.current = null;
             }
         } catch (e: any) {
@@ -90,6 +116,7 @@ export function useAuth(): AuthState {
             setProfile(null);
             setRole(null);
             setStaffBranchId(null);
+            setStaffBranchName(null); // Şube adını da sıfırla
             fetchedProfileForUserIdRef.current = null;
         } finally {
             if (mountedRef.current) {
@@ -117,6 +144,7 @@ export function useAuth(): AuthState {
                 setProfile(null);
                 setRole(null);
                 setStaffBranchId(null);
+                setStaffBranchName(null); // Oturum kapatıldığında şube adını da sıfırla
                 fetchedProfileForUserIdRef.current = null;
             } else if (currentUser) {
                 // Re-fetch profile if:
@@ -139,6 +167,7 @@ export function useAuth(): AuthState {
                 setProfile(null);
                 setRole(null);
                 setStaffBranchId(null);
+                setStaffBranchName(null); // Kullanıcı oturumu yoksa şube adını da sıfırla
                 fetchedProfileForUserIdRef.current = null;
             }
             // Set loading to false after all processing for this auth change is done
@@ -166,5 +195,5 @@ export function useAuth(): AuthState {
         };
     }, [supabase, fetchUserProfile]); // Dependencies: supabase and fetchUserProfile
 
-    return { session, user, profile, role, staffBranchId, loading, error };
+    return { session, user, profile, role, staffBranchId, staffBranchName, loading, error }; // staffBranchName'i döndür
 }

@@ -10,13 +10,13 @@ import { useMemo, useState } from 'react'; // useMemo import edildi
 import { UserStatus } from './user-status';
 
 export function TopNavbar() {
-	const { role, staffBranchId, loading: authLoading } = useAuth(); // Use the hook
+	const { role, staffBranchId, staffBranchName, loading: authLoading } = useAuth(); // staffBranchName eklendi
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
 	// useEffect(() => {
 	//  // Optional: Log auth state changes for debugging
-	//  console.log('TopNavbar auth state:', { role, staffBranchId, authLoading });
-	// }, [role, staffBranchId, authLoading]);
+	//  console.log('TopNavbar auth state:', { role, staffBranchId, staffBranchName, authLoading });
+	// }, [role, staffBranchId, staffBranchName, authLoading]);
 
 	const baseNavLinks = useMemo(
 		() => [
@@ -42,13 +42,20 @@ export function TopNavbar() {
 	const dynamicNavLinks = useMemo(() => {
 		const links = [...baseNavLinks];
 		if (role === 'branch_staff') {
-			if (staffBranchId) {
+			if (staffBranchName) { // staffBranchId yerine staffBranchName kontrolü
 				links.unshift({
-					href: `/branch/${staffBranchId}`,
+					href: `/branch/${encodeURIComponent(staffBranchName)}`, // Şube adını kullan ve URL encode et
 					label: 'Şubem',
 					roles: ['branch_staff'],
 				});
-			} else {
+			} else if (staffBranchId && !staffBranchName && !authLoading) {
+				// ID var ama isim henüz yüklenmemişse veya bulunamamışsa (ve yükleme bitmişse)
+				links.unshift({
+					href: '/authorization-pending', // Ya da bir hata/bekleme sayfasına yönlendir
+					label: 'Şubem (Bilgi Bekleniyor)',
+					roles: ['branch_staff'],
+				});
+			} else { // Ne ID ne de isim varsa (veya authLoading ise, bu durum filteredLinks'te ele alınır)
 				links.unshift({
 					href: '/authorization-pending',
 					label: 'Şubem (Atanmadı)',
@@ -57,7 +64,7 @@ export function TopNavbar() {
 			}
 		}
 		return links;
-	}, [role, staffBranchId, baseNavLinks]);
+	}, [role, staffBranchId, staffBranchName, authLoading, baseNavLinks]); // staffBranchName ve authLoading eklendi
 
 	const filteredLinks = useMemo(() => {
 		if (authLoading) return []; // Yükleniyorsa hiç link gösterme
