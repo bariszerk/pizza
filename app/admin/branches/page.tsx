@@ -673,29 +673,140 @@ export default function AdminBranchesPage() {
 								</p>
 							) : (
 								<div className="overflow-x-auto text-xs sm:text-sm">
-									<Table className="min-w-[900px]">
+									{/* Tablo yapısı mobil ve küçük ekranlar için düzenlendi */}
+									<div className="block md:hidden">
+										{/* Mobil görünüm: Her satır bir kart gibi */}
+										{branchesToDisplay.map((branch) => (
+											<Card key={`${branch.id}-mobile`} className="mb-4">
+												<CardHeader className="p-3">
+													<CardTitle className="text-base">
+														{branch.name}
+													</CardTitle>
+													{branch.address && (
+														<CardDescription className="text-xs">
+															{branch.address}
+														</CardDescription>
+													)}
+												</CardHeader>
+												<CardContent className="p-3 space-y-2 text-xs">
+													{currentUserRole === 'admin' && (
+														<div>
+															<strong className="block mb-1">
+																Yöneticiler:
+															</strong>
+															{branch.assigned_managers &&
+															branch.assigned_managers.length > 0 ? (
+																<ul className="space-y-0.5">
+																	{branch.assigned_managers.map((manager) => (
+																		<li
+																			key={manager.id}
+																			className="flex items-center justify-between group"
+																		>
+																			<span>
+																				{manager.first_name} {manager.last_name}
+																			</span>
+																			<Button
+																				variant="ghost"
+																				size="icon"
+																				className="h-5 w-5"
+																				onClick={() =>
+																					handleRemoveManagerFromBranch(
+																						branch.id,
+																						manager.id
+																					)
+																				}
+																				title="Bu yöneticiyi şubeden ayır"
+																			>
+																				<UserMinusIcon className="h-3 w-3 text-destructive" />
+																			</Button>
+																		</li>
+																	))}
+																</ul>
+															) : (
+																<span className="text-muted-foreground">
+																	Yönetici atanmamış
+																</span>
+															)}
+															<Button
+																variant="outline"
+																className="mt-1.5 w-full"
+																onClick={() => openAssignManagerModal(branch)}
+															>
+																<UserPlusIcon className="h-3 w-3 mr-1" />
+																Yönetici Ata
+															</Button>
+														</div>
+													)}
+													<div>
+														<Button
+															variant="outline"
+															className="w-full"
+															onClick={() => openAssignStaffModal(branch)}
+														>
+															Personel Yönetimi (
+															{branch.assigned_staff
+																? branch.assigned_staff.length
+																: 0}
+															)
+														</Button>
+													</div>
+													<div>
+														<Button
+															variant="outline"
+															className="w-full"
+															onClick={() =>
+																router.push(
+																	`/admin/branch-financials/${encodeURIComponent(branch.name)}`
+																)
+															}
+														>
+															<DollarSignIcon className="h-3 w-3 mr-1" />
+															Finansal Veri Girişi
+														</Button>
+													</div>
+													{currentUserRole === 'admin' && (
+														<div>
+															<Button
+																variant="destructive"
+																className="w-full"
+																onClick={() => handleDeleteBranch(branch.id)}
+																disabled={isSubmitting}
+																title="Şubeyi Kalıcı Olarak Sil"
+															>
+																<Trash2Icon className="h-3 w-3 mr-1" />
+																Şubeyi Sil
+															</Button>
+														</div>
+													)}
+												</CardContent>
+											</Card>
+										))}
+									</div>
+
+									{/* Tablet ve üzeri için tablo görünümü */}
+									<Table className="hidden md:table min-w-full">
 										<TableHeader>
 											<TableRow>
-												<TableHead className="w-[20%] px-2 py-3 sm:px-4">
+												<TableHead className="px-2 py-3 sm:px-4 whitespace-nowrap">
 													Şube Adı
 												</TableHead>
-												<TableHead className="w-[25%] px-2 py-3 sm:px-4 hidden md:table-cell">
+												<TableHead className="px-2 py-3 sm:px-4 hidden lg:table-cell whitespace-nowrap">
 													Adres
 												</TableHead>
 												{currentUserRole === 'admin' && (
-													<TableHead className="w-[25%] px-2 py-3 sm:px-4 hidden lg:table-cell">
+													<TableHead className="px-2 py-3 sm:px-4 hidden xl:table-cell whitespace-nowrap">
 														Atanmış Yöneticiler
 													</TableHead>
 												)}
-												<TableHead className="w-[15%] px-2 py-3 sm:px-4">
+												<TableHead className="px-2 py-3 sm:px-4 whitespace-nowrap">
 													Personel
 												</TableHead>
-												<TableHead className="w-[15%] px-2 py-3 sm:px-4">
+												<TableHead className="px-2 py-3 sm:px-4 whitespace-nowrap">
 													Finansal İşlemler
 												</TableHead>
 												{currentUserRole === 'admin' && (
-													<TableHead className="text-right w-[10%] px-2 py-3 sm:px-4">
-														Sil
+													<TableHead className="text-right px-2 py-3 sm:px-4 whitespace-nowrap">
+														İşlemler
 													</TableHead>
 												)}
 											</TableRow>
@@ -705,12 +816,15 @@ export default function AdminBranchesPage() {
 												<TableRow key={branch.id}>
 													<TableCell className="font-medium px-2 py-2 sm:px-4">
 														{branch.name}
+														<div className="text-xs text-muted-foreground lg:hidden">
+															{branch.address || 'Adres yok'}
+														</div>
 													</TableCell>
-													<TableCell className="px-2 py-2 sm:px-4 hidden md:table-cell">
+													<TableCell className="px-2 py-2 sm:px-4 hidden lg:table-cell">
 														{branch.address || 'Adres belirtilmemiş'}
 													</TableCell>
 													{currentUserRole === 'admin' && (
-														<TableCell className="px-2 py-2 sm:px-4 hidden lg:table-cell">
+														<TableCell className="px-2 py-2 sm:px-4 hidden xl:table-cell">
 															{branch.assigned_managers &&
 															branch.assigned_managers.length > 0 ? (
 																<ul className="space-y-1">
@@ -720,13 +834,12 @@ export default function AdminBranchesPage() {
 																			className="text-xs flex items-center justify-between group"
 																		>
 																			<span>
-																				{manager.first_name} {manager.last_name}{' '}
-																				({manager.email})
+																				{manager.first_name} {manager.last_name}
 																			</span>
 																			<Button
 																				variant="ghost"
 																				size="icon"
-																				className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+																				className="h-6 w-6 ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
 																				onClick={() =>
 																					handleRemoveManagerFromBranch(
 																						branch.id,
@@ -742,41 +855,38 @@ export default function AdminBranchesPage() {
 																</ul>
 															) : (
 																<span className="text-xs text-muted-foreground">
-																	Yönetici atanmamış
+																	Yok
 																</span>
 															)}
 															<Button
 																variant="outline"
-																size="sm"
-																className="mt-2 text-xs"
+																className="mt-1.5 text-xs"
 																onClick={() => openAssignManagerModal(branch)}
 															>
-																<UserPlusIcon className="h-3 w-3 mr-1" />
-																Yönetici Ata
+																<UserPlusIcon className="h-3 w-3 mr-0.5" />
+																Ata
 															</Button>
 														</TableCell>
 													)}
 													<TableCell className="px-2 py-2 sm:px-4">
-														{/* <span className="text-xs block mb-1">
-															{branch.assigned_staff
-																? branch.assigned_staff.length
-																: 0}{' '}
-															personel kayıtlı
-														</span> */}
 														<Button
 															variant="outline"
-															size="sm"
-															className="text-xs"
+															size="sm" // Buton boyutu sm veya xs olabilir, tasarıma göre ayarlanabilir
+															className="text-xs w-full xl:w-auto" // xl ekranlarda otomatik genişlik
 															onClick={() => openAssignStaffModal(branch)}
 														>
-															Personel Yönetimi
+															Yönet (
+															{branch.assigned_staff
+																? branch.assigned_staff.length
+																: 0}
+															)
 														</Button>
 													</TableCell>
 													<TableCell className="px-2 py-2 sm:px-4">
 														<Button
 															variant="outline"
 															size="sm"
-															className="text-xs"
+															className="text-xs w-full xl:w-auto"
 															onClick={() =>
 																router.push(
 																	`/admin/branch-financials/${encodeURIComponent(branch.name)}`
@@ -784,11 +894,12 @@ export default function AdminBranchesPage() {
 															}
 														>
 															<DollarSignIcon className="h-3 w-3 mr-1" />
-															Finansal Veri Girişi
+															Giriş
 														</Button>
 													</TableCell>
 													{currentUserRole === 'admin' && (
-														<TableCell className="text-right px-2 py-2 sm:px-4">
+														<TableCell className="text-right px-2 py-2 sm:px-4 space-x-1">
+															{/* Admin işlemleri mobil için ayrı kartta, tablet/desktop için burada */}
 															<Button
 																variant="destructive"
 																size="sm"
