@@ -54,7 +54,7 @@ export function TopNavbar() {
 			}
 		}
 		return links;
-	}, [role, staffBranchId]); // baseNavLinks sabit olduğu için bağımlılıklara eklenmedi
+	}, [role, staffBranchId, baseNavLinks]);
 
 	const filteredLinks = useMemo(() => {
 		if (authLoading) return []; // Yükleniyorsa hiç link gösterme
