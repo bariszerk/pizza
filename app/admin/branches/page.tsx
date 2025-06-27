@@ -38,7 +38,12 @@ import {
 } from '@/components/ui/table';
 import { createClient } from '@/utils/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
-import { DollarSignIcon, Trash2Icon, UserMinusIcon, UserPlusIcon } from 'lucide-react'; // DollarSignIcon eklendi
+import {
+	DollarSignIcon,
+	Trash2Icon,
+	UserMinusIcon,
+	UserPlusIcon,
+} from 'lucide-react'; // DollarSignIcon eklendi
 import { useRouter } from 'next/navigation'; // useRouter eklendi
 import { useCallback, useEffect, useState } from 'react';
 
@@ -271,9 +276,7 @@ export default function AdminBranchesPage() {
 				await fetchData(currentUserId, currentUserRole);
 		} catch (err: unknown) {
 			setFormError(
-				err instanceof Error
-					? err.message
-					: 'Şube eklenirken bir hata oluştu.'
+				err instanceof Error ? err.message : 'Şube eklenirken bir hata oluştu.'
 			);
 		} finally {
 			setIsSubmitting(false);
@@ -388,8 +391,7 @@ export default function AdminBranchesPage() {
 		if (currentUserRole !== 'admin') return;
 		setConfirmDialogProps({
 			title: 'Yöneticiyi Şubeden Ayır',
-			description:
-				'Bu yöneticiyi şubeden ayırmak istediğinizden emin misiniz?',
+			description: 'Bu yöneticiyi şubeden ayırmak istediğinizden emin misiniz?',
 			confirmText: 'Evet, Ayır',
 			onConfirm: async () => {
 				setConfirmDialogOpen(false);
@@ -674,17 +676,27 @@ export default function AdminBranchesPage() {
 									<Table className="min-w-[900px]">
 										<TableHeader>
 											<TableRow>
-												<TableHead className="w-[20%] px-2 py-3 sm:px-4">Şube Adı</TableHead>
-												<TableHead className="w-[25%] px-2 py-3 sm:px-4 hidden md:table-cell">Adres</TableHead>
+												<TableHead className="w-[20%] px-2 py-3 sm:px-4">
+													Şube Adı
+												</TableHead>
+												<TableHead className="w-[25%] px-2 py-3 sm:px-4 hidden md:table-cell">
+													Adres
+												</TableHead>
 												{currentUserRole === 'admin' && (
 													<TableHead className="w-[25%] px-2 py-3 sm:px-4 hidden lg:table-cell">
 														Atanmış Yöneticiler
 													</TableHead>
 												)}
-												<TableHead className="w-[15%] px-2 py-3 sm:px-4">Personel</TableHead>
-												<TableHead className="w-[15%] px-2 py-3 sm:px-4">Finansal İşlemler</TableHead>
+												<TableHead className="w-[15%] px-2 py-3 sm:px-4">
+													Personel
+												</TableHead>
+												<TableHead className="w-[15%] px-2 py-3 sm:px-4">
+													Finansal İşlemler
+												</TableHead>
 												{currentUserRole === 'admin' && (
-													<TableHead className="text-right w-[10%] px-2 py-3 sm:px-4">Sil</TableHead>
+													<TableHead className="text-right w-[10%] px-2 py-3 sm:px-4">
+														Sil
+													</TableHead>
 												)}
 											</TableRow>
 										</TableHeader>
@@ -708,8 +720,8 @@ export default function AdminBranchesPage() {
 																			className="text-xs flex items-center justify-between group"
 																		>
 																			<span>
-																				{manager.first_name} {manager.last_name} (
-																				{manager.email})
+																				{manager.first_name} {manager.last_name}{' '}
+																				({manager.email})
 																			</span>
 																			<Button
 																				variant="ghost"
@@ -745,12 +757,12 @@ export default function AdminBranchesPage() {
 														</TableCell>
 													)}
 													<TableCell className="px-2 py-2 sm:px-4">
-														<span className="text-xs block mb-1">
+														{/* <span className="text-xs block mb-1">
 															{branch.assigned_staff
 																? branch.assigned_staff.length
 																: 0}{' '}
 															personel kayıtlı
-														</span>
+														</span> */}
 														<Button
 															variant="outline"
 															size="sm"
@@ -765,7 +777,11 @@ export default function AdminBranchesPage() {
 															variant="outline"
 															size="sm"
 															className="text-xs"
-															onClick={() => router.push(`/admin/branch-financials/${branch.id}`)}
+															onClick={() =>
+																router.push(
+																	`/admin/branch-financials/${branch.id}`
+																)
+															}
 														>
 															<DollarSignIcon className="h-3 w-3 mr-1" />
 															Finansal Veri Girişi
@@ -807,8 +823,8 @@ export default function AdminBranchesPage() {
 						<DialogHeader>
 							<DialogTitle>{`"${selectedBranchForStaffAssignment.name}" Şubesi Personel Yönetimi`}</DialogTitle>
 							<DialogDescription>
-								Bu şubeye yeni personel atayabilir veya mevcut personeli
-								şubeden ayırabilirsiniz.
+								Bu şubeye yeni personel atayabilir veya mevcut personeli şubeden
+								ayırabilirsiniz.
 							</DialogDescription>
 						</DialogHeader>
 						<div className="py-4 space-y-4">
@@ -873,8 +889,8 @@ export default function AdminBranchesPage() {
 											)
 											.map((user) => (
 												<SelectItem key={user.id} value={user.id}>
-													{user.first_name} {user.last_name} ({user.email})
-													- Mevcut Rol: {user.role}
+													{user.first_name} {user.last_name} ({user.email}) -
+													Mevcut Rol: {user.role}
 												</SelectItem>
 											))}
 										{allUsersForStaffAssignment.filter(

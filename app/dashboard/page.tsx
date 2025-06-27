@@ -4,7 +4,6 @@
 import {
 	endOfDay,
 	format,
-	isSameDay,
 	isValid,
 	parseISO,
 	startOfDay,
@@ -805,7 +804,6 @@ function DashboardContent() {
 	}
 
 	const {
-		userRole,
 		availableBranches,
 		overviewData,
 		totalRevenue,
@@ -820,27 +818,7 @@ function DashboardContent() {
 		dataEntryStatusToday,
 	} = dashboardData;
 
-	const { dateDisplay, branchDisplay } = (() => {
-		let dDisplay = 'Tarih Aralığı Seçilmedi';
-		if (selectedDateRange?.from && isValid(selectedDateRange.from)) {
-			const fromFormatted = format(selectedDateRange.from, 'dd LLL yy', {
-				locale: tr,
-			});
-			if (
-				selectedDateRange.to &&
-				isValid(selectedDateRange.to) &&
-				!isSameDay(selectedDateRange.from, selectedDateRange.to)
-			) {
-				dDisplay = `${fromFormatted} - ${format(
-					selectedDateRange.to,
-					'dd LLL yy',
-					{ locale: tr }
-				)}`;
-			} else {
-				dDisplay = fromFormatted; // Tek gün seçiliyse sadece o günü göster
-			}
-		}
-
+	const { branchDisplay } = (() => {
 		let bDisplay = 'Şube Seçilmedi';
 		if (selectedBranchId) {
 			const foundBranch = availableBranches.find(
@@ -851,7 +829,7 @@ function DashboardContent() {
 		} else if (availableBranches.length === 0) {
 			bDisplay = 'Atanmış Şube Yok';
 		}
-		return { dateDisplay: dDisplay, branchDisplay: bDisplay };
+		return { branchDisplay: bDisplay };
 	})();
 
 	return (
@@ -861,11 +839,10 @@ function DashboardContent() {
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
 						<div>
 							<h2 className="text-2xl sm:text-3xl font-bold tracking-tight"> {/* Responsive font size */}
-								Genel Durum Paneli (
-								{userRole === 'admin' ? 'Yönetici' : 'Müdür'})
+								Genel Durum Paneli
 							</h2>
 							<p className="text-sm text-muted-foreground mt-1">
-								{branchDisplay} / {dateDisplay}
+								{branchDisplay}
 							</p>
 						</div>
 						<div className="flex items-center space-x-2">

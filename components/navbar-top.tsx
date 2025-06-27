@@ -22,7 +22,7 @@ export function TopNavbar() {
 		() => [
 			{
 				href: '/dashboard',
-				label: 'Kontrol Paneli',
+				label: 'Genel Durum Paneli',
 				roles: ['manager', 'admin'],
 			},
 			{
@@ -90,7 +90,7 @@ export function TopNavbar() {
 					</button>
 					<div className="text-lg font-semibold">
 						<Link href={role && role !== 'user' ? '/dashboard' : '/'}>
-							Pizza Yönetim
+							Zerkify
 						</Link>
 					</div>
 				</div>
