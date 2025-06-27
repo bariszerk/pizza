@@ -440,7 +440,8 @@ function DashboardContent() {
 		if (!authLoading && user && userRoleFromAuth) {
 			initializeDashboard();
 		}
-	}, [user, userRoleFromAuth, authLoading, initializeDashboard]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [user, userRoleFromAuth, authLoading]);
 
 	useEffect(() => {
 		// Şube seçimi modalını gösterme: Auth ve sayfa yüklemesi tamamlandıktan sonra,
@@ -586,9 +587,9 @@ function DashboardContent() {
 					locale: tr,
 				}),
 				branchName: branchName,
-				earnings: data.kazanc ?? 0,
-				expenses: (data.kazanc ?? 0) - (data.netKar ?? 0),
-				netProfit: data.netKar ?? 0,
+				earnings: data.kazanc,
+				expenses: data.kazanc - data.netKar,
+				netProfit: data.netKar,
 				summary: 'Bu gün için detaylı özet kaydı bulunamadı.',
 			});
 		}
@@ -1012,9 +1013,7 @@ function DashboardContent() {
 												// IncomeExpenseChartDataPoint[] bekliyor, gideri eklemeliyiz
 												data={overviewData.map(d => ({
 													...d,
-													kazanc: d.kazanc ?? 0,
-													netKar: d.netKar ?? 0,
-													gider: (d.kazanc ?? 0) - (d.netKar ?? 0),
+													gider: d.kazanc ? (d.kazanc - d.netKar) : 0, // Eğer kazanc tanımsızsa gider 0
 												}))}
 												onBarClick={handleChartBarClick}
 											/>
