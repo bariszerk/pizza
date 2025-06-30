@@ -1,14 +1,12 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export async function POST(req: NextRequest) {
-	const cookieStore = cookies();
-	const supabase = createClient(cookieStore);
+	const supabase = await createClient();
 
 	const {
 		data: { session },
-	} = await supabase.auth.getSession();
+	} = await (await supabase).auth.getSession();
 
 	if (!session || !session.user) {
 		return NextResponse.json({ error: 'Yetkisiz erişim.' }, { status: 401 });
@@ -40,7 +38,7 @@ export async function POST(req: NextRequest) {
 	}
 
 	// 1. Verify current password by trying to sign in
-	const { error: signInError } = await supabase.auth.signInWithPassword({
+	const { error: signInError } = await (await supabase).auth.signInWithPassword({
 		email: userEmail,
 		password: currentPassword,
 	});
@@ -61,7 +59,7 @@ export async function POST(req: NextRequest) {
 	}
 
 	// 2. If current password is correct, update to the new password
-	const { error: updateError } = await supabase.auth.updateUser({
+	const { error: updateError } = await (await supabase).auth.updateUser({
 		password: newPassword,
 	});
 
