@@ -1,18 +1,24 @@
-## Elif
-- Test edilmesi gerek bol bol uygulamanın eksiklerin/bugların not edilmesi gerek
+# Finans Takip Uygulaması
 
-## Barış
-- ~~takvim türkçeleştirilecek~~
-- ~~küçük barların üzerine geldiğinde daha detaylı gösterilecek~~
-- ~~dolardan tlye geçiş~~
-- ~~rolü user olarak güncellenecek açıklamasını değiştirelim~~
-- ~~işlemler kısmı eğer yöneticiyse gözükmesin~~
-- ~~tarihler ikili ikili atlıyor 18 20 22 gibisinden gidiyor.~~
-- ~~tarihler test edilecek~~
-- ~~light-dark türkçeleştirilecek~~
-- ~~profil işareti eklenecek~~
-- ~~branch financial summary yazıyor türkçeleştir.~~
-- ~~şubem sayfasını tamamını türkçeleştir.~~
-- mail onay kaldırılmalı veya düzgün bir şekilde çalışır hale gelmeli.
-- şifre yenileme linki eklenmesi ve supabase entegrasyonu
-- supabase içerisindeki mail metinlerinin ve linklerinin düzenlenmesi
+Bu uygulama, şubelerin finansal durumlarını merkezi bir noktadan izlemek, gelir ve giderlerini kaydetmek ve genel bir bakış açısı sunmak amacıyla geliştirilmiştir.
+
+## Temel Amaçlar
+
+*   Şubelerin günlük, haftalık veya aylık finansal performansını kolayca takip edebilmek.
+*   Gelir ve gider kalemlerini düzenli bir şekilde kaydetmek.
+*   Yöneticilere ve yetkililere şube bazlı veya genel finansal raporlar sunmak.
+*   Veri giriş süreçlerini basitleştirmek ve hızlandırmak.
+
+## Anahtar Özellikler
+
+*   **Kullanıcı Rolleri:** Admin ve Şube Yöneticisi gibi farklı yetkilere sahip kullanıcı rolleri.
+*   **Şube Yönetimi:** Sisteme yeni şubeler ekleme ve mevcut şubeleri yönetme.
+*   **Finansal Veri Girişi:** Her şube için günlük gelir ve gider kayıtlarının yapılması.
+*   **Gösterge Paneli (Dashboard):**
+    *   Belirli bir tarih aralığı için toplam gelir, toplam gider ve net kâr gibi özet bilgilerin görüntülenmesi.
+    *   Şube bazında finansal verilerin filtrelenebilmesi.
+    *   Günlük net kâr ve gelir/gider dağılımını gösteren grafikler.
+    *   Seçilen şubenin o gün için veri girişinin yapılıp yapılmadığının takibi.
+*   **Raporlama:** Temel finansal raporların (ileride eklenebilir) oluşturulması.
+
+Bu proje, işletmelerin veya kurumların şube ağlarındaki finansal akışlarını daha etkin bir şekilde yönetmelerine yardımcı olmayı hedefler.
