@@ -871,6 +871,18 @@ function DashboardContent() {
 									Atanmış Şube Bulunmamaktadır
 								</div>
 							)}
+							<Button
+								onClick={() => {
+									if (selectedBranchId) {
+										router.push(`/branch/${selectedBranchId}`);
+									}
+								}}
+								disabled={!selectedBranchId || pageLoading}
+								variant="outline" // Butonun görünümünü diğerleriyle uyumlu hale getirelim
+								className="h-10" // Yüksekliği DateRangePicker ile aynı yapalım
+							>
+								Finansal Veri Girişi
+							</Button>
 							<DateRangePicker
 								onDateChange={handleDateChange}
 								initialDateRange={selectedDateRange}
