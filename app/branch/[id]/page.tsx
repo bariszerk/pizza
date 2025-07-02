@@ -1,4 +1,3 @@
-// app/branch/[id]/page.tsx
 'use client';
 
 import { LoadingSpinner } from '@/components/ui/loading-spinner'; // LoadingSpinner import edildi
@@ -26,11 +25,11 @@ type BranchFinancial = {
 };
 
 export default function BranchPage() {
-	const { id: branchNameFromUrl } = useParams(); // Dosya yolu [id] olduğu için parametre adı id olmalı. Değer şube adını taşıyacak.
-	const branchNameParam = Array.isArray(branchNameFromUrl)
-		? branchNameFromUrl[0]
-		: branchNameFromUrl;
+	const params = useParams();
+	// URL'den gelen 'id' parametresini alıyoruz, bu branch'in UUID'si olmalı.
+	const branchIdFromUrl = Array.isArray(params.id) ? params.id[0] : params.id;
 
+	const [branchName, setBranchName] = useState<string | null>(null); // Şube adını saklamak için
 	const [expenses, setExpenses] = useState('');
 	const [earnings, setEarnings] = useState('');
 	const [summary, setSummary] = useState('');
@@ -48,10 +47,10 @@ export default function BranchPage() {
 	const yesterday = useMemo(() => startOfDay(subDays(today, 1)), [today]);
 
 	useEffect(() => {
-		if (!branchNameParam) { // branchId'yi branchNameParam olarak değiştir
+		if (!branchIdFromUrl) {
 			setIsLoadingData(false);
-			toast.error('Şube adı bulunamadı. Lütfen tekrar deneyin.'); // Mesajı güncelle
-			setIsFormDisabled(true); // Formu devre dışı bırak
+			toast.error('Şube kimliği URL\'de bulunamadı. Lütfen tekrar deneyin.');
+			setIsFormDisabled(true);
 			return;
 		}
 
@@ -61,23 +60,25 @@ export default function BranchPage() {
 			setEarnings('');
 			setSummary('');
 			setExistingRecordId(null);
-			setIsFormDisabled(false); // Başlangıçta formu etkinleştir
+			setIsFormDisabled(false);
+			setBranchName(null); // Şube adını sıfırla
 
-			// Şube adından şube kimliğini al
-			const { data: branchByName, error: branchByNameError } = await supabase
+			// Şube ID'sinden şube adını al (kullanıcı arayüzünde göstermek için)
+			const { data: branchData, error: branchError } = await supabase
 				.from('branches')
-				.select('id')
-				.eq('name', decodeURIComponent(branchNameParam)) // URL'den gelen adı decode et
+				.select('name')
+				.eq('id', branchIdFromUrl) // Artık 'id' ile sorguluyoruz
 				.single();
 
-			if (branchByNameError || !branchByName) {
-				toast.error(`'${decodeURIComponent(branchNameParam)}' adlı şube için veri yüklenemedi.`);
+			if (branchError || !branchData) {
+				toast.error(
+					`Şube (ID: ${branchIdFromUrl}) bulunamadı veya yüklenemedi.`
+				);
 				setIsLoadingData(false);
 				setIsFormDisabled(true);
 				return;
 			}
-			const currentBranchId = branchByName.id;
-
+			setBranchName(branchData.name); // Şube adını state'e kaydet
 
 			const dateStr = format(dateToLoad, 'yyyy-MM-dd');
 
@@ -85,7 +86,7 @@ export default function BranchPage() {
 				const { data, error } = await supabase
 					.from('branch_financials')
 					.select('*')
-					.eq('branch_id', currentBranchId) // branchId'yi currentBranchId olarak değiştir
+					.eq('branch_id', branchIdFromUrl) // Doğrudan URL'den gelen ID'yi kullan
 					.eq('date', dateStr)
 					.single();
 
@@ -94,7 +95,7 @@ export default function BranchPage() {
 					throw error;
 				}
 
-				let formShouldBeDisabled = true; // Varsayılan olarak devre dışı
+				let formShouldBeDisabled = true;
 				const allowEditToday = isSameDay(dateToLoad, today);
 				let allowEditYesterday = false;
 
@@ -104,28 +105,27 @@ export default function BranchPage() {
 					setSummary(data.summary || '');
 					setExistingRecordId(data.id);
 					if (allowEditToday) {
-						formShouldBeDisabled = false; // Bugünse düzenlemeye izin ver
+						formShouldBeDisabled = false;
 					}
 				} else {
-					// Kayıt yoksa
 					allowEditYesterday = isSameDay(dateToLoad, yesterday);
 					if (allowEditToday || allowEditYesterday) {
-						formShouldBeDisabled = false; // Bugün veya dün (kayıt yoksa) ise yeni girişe izin ver
+						formShouldBeDisabled = false;
 					}
 				}
 				setIsFormDisabled(formShouldBeDisabled);
 			} catch (error: unknown) {
 				const errorMessage =
 					error instanceof Error ? error.message : 'bilinmeyen bir hata oluştu';
-				toast.error(`Veri yüklenirken hata: ${errorMessage}`);
-				setIsFormDisabled(true); // Hata durumunda formu devre dışı bırak
+				toast.error(`Finansal veri yüklenirken hata: ${errorMessage}`);
+				setIsFormDisabled(true);
 			} finally {
 				setIsLoadingData(false);
 			}
 		};
 
 		loadData(selectedDate);
-	}, [selectedDate, branchNameParam, supabase, today, yesterday]); // branchId'yi branchNameParam olarak değiştir
+	}, [selectedDate, branchIdFromUrl, supabase, today, yesterday]);
 
 	const handleDateSelect = (newDate: Date | undefined) => {
 		if (newDate && !isSameDay(newDate, selectedDate)) {
@@ -135,29 +135,11 @@ export default function BranchPage() {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (isFormDisabled || isSubmitting || isLoadingData) return;
+		if (isFormDisabled || isSubmitting || isLoadingData || !branchIdFromUrl) return;
 
 		setIsSubmitting(true);
 
-		// Şube adından şube kimliğini al
-		if (!branchNameParam) { // branchId'yi branchNameParam olarak değiştir
-			toast.error('Şube adı geçersiz. İşlem yapılamıyor.'); // Mesajı güncelle
-			setIsSubmitting(false);
-			return;
-		}
-		const { data: branchByName, error: branchByNameError } = await supabase
-			.from('branches')
-			.select('id')
-			.eq('name', decodeURIComponent(branchNameParam)) // URL'den gelen adı decode et
-			.single();
-
-		if (branchByNameError || !branchByName) {
-			toast.error(`'${decodeURIComponent(branchNameParam)}' adlı şube için işlem yapılamadı.`);
-			setIsSubmitting(false);
-			return;
-		}
-		const currentBranchId = branchByName.id;
-
+		// branchIdFromUrl zaten mevcut, tekrar sorgulamaya gerek yok.
 
 		const expensesValue = parseFloat(expenses);
 		const earningsValue = parseFloat(earnings);
@@ -183,7 +165,7 @@ export default function BranchPage() {
 		}
 
 		const payload: Omit<BranchFinancial, 'id' | 'created_at'> = {
-			branch_id: currentBranchId, // branchId'yi currentBranchId olarak değiştir
+			branch_id: branchIdFromUrl, // Doğrudan URL'den gelen ID'yi kullan
 			expenses: expensesValue,
 			earnings: earningsValue,
 			summary,
@@ -261,10 +243,15 @@ export default function BranchPage() {
 					<Card className="shadow-xl">
 						<CardHeader className="pb-4">
 							<CardTitle className="text-2xl md:text-3xl font-semibold text-center">
-								Şube Günlük Finansal Özet Girişi
+								{branchName
+									? `${branchName} Şubesi Finansal Özet Girişi`
+									: 'Şube Finansal Özet Girişi'}
 							</CardTitle>
 							<p className="text-sm text-muted-foreground text-center">
 								{format(selectedDate, 'dd MMMM yyyy, EEEE', { locale: tr })}
+								{branchName && isLoadingData && (
+									<span className="ml-2 text-xs">(Yükleniyor...)</span>
+								)}
 							</p>
 						</CardHeader>
 						<CardContent className="p-6 md:p-8 space-y-6">
