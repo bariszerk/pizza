@@ -934,7 +934,7 @@ export default function AdminBranchesPage() {
 															}
 														>
 															<DollarSignIcon className="h-3 w-3 mr-1" />
-															Giriş
+															Finansal Veri Girişi
 														</Button>
 													</TableCell>
 													{currentUserRole === 'admin' && (

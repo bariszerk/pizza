@@ -13,6 +13,7 @@ import { tr } from 'date-fns/locale';
 import {
 	AlertTriangle,
 	CheckCircle2,
+	DollarSignIcon,
 	FileText,
 	ListChecks,
 	TrendingDown,
@@ -881,6 +882,7 @@ function DashboardContent() {
 								variant="outline" // Butonun görünümünü diğerleriyle uyumlu hale getirelim
 								className="h-10" // Yüksekliği DateRangePicker ile aynı yapalım
 							>
+								<DollarSignIcon className="h-3 w-3 mr-1" />
 								Finansal Veri Girişi
 							</Button>
 							<DateRangePicker
