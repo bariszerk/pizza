@@ -957,7 +957,18 @@ function DashboardContent() {
 											{dataEntryStatusToday ? (
 												<span className="text-green-500">Giriş Yapıldı</span>
 											) : (
-												<span className="text-red-500">Giriş Bekleniyor</span>
+												<Button
+													variant="link"
+													className="text-red-500 p-0 h-auto text-lg font-bold"
+													onClick={() => {
+														if (selectedBranchId && !dataEntryStatusToday) {
+															router.push(`/branch/${selectedBranchId}`);
+														}
+													}}
+													disabled={!selectedBranchId || dataEntryStatusToday}
+												>
+													Giriş Bekleniyor
+												</Button>
 											)}
 										</div>
 									</CardContent>
