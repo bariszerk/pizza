@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
                             {message && <p className="text-sm text-green-600">{message}</p>}
                             {error && <p className="text-sm text-red-600">{error}</p>}
                             <Button type="submit" className="w-full" disabled={loading}>
-                                {loading ? 'Gönderiliyor...' : 'Şifre Sıırlama Bağlantısı Gönder'}
+                                {loading ? 'Gönderiliyor...' : 'Şifre Sıfırlama Bağlantısı Gönder'}
                             </Button>
                         </div>
                     </form>
