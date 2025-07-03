@@ -290,6 +290,18 @@ export default function AdminBranchFinancialsPage() {
 					.update(payload)
 					.eq('id', existingRecordId);
 				if (error) throw error;
+
+				const { data: { user } } = await supabase.auth.getUser();
+				if (user) {
+					const logData = {
+						branch_id: branchId,
+						user_id: user.id,
+						action: 'FINANCIAL_DATA_UPDATED',
+						data: payload,
+					};
+					await supabase.from('financial_logs').insert([logData]);
+				}
+
 				toast.success('Finansal veriler başarıyla güncellendi!', {
 					description: `${branchName} - ${format(selectedDate, 'dd MMMM yyyy', {
 						locale: tr,
@@ -302,6 +314,18 @@ export default function AdminBranchFinancialsPage() {
 					.select('id')
 					.single();
 				if (error) throw error;
+
+				const { data: { user } } = await supabase.auth.getUser();
+				if (insertedData && user) {
+					const logData = {
+						branch_id: branchId,
+						user_id: user.id,
+						action: 'FINANCIAL_DATA_ADDED',
+						data: payload,
+					};
+					await supabase.from('financial_logs').insert([logData]);
+				}
+
 				toast.success('Finansal veriler başarıyla kaydedildi!', {
 					description: `${branchName} - ${format(selectedDate, 'dd MMMM yyyy', {
 						locale: tr,

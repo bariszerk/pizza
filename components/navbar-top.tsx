@@ -35,6 +35,11 @@ export function TopNavbar() {
 				label: 'Şube Yönetimi',
 				roles: ['admin', 'manager'],
 			},
+			{
+				href: '/admin/financial-logs',
+				label: 'Finansal Kayıtlar',
+				roles: ['admin'],
+			},
 		],
 		[]
 	);

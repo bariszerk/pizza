@@ -1,4 +1,3 @@
-// app/api/branch/[id]/route.ts
 import { createClient } from '@/utils/supabase/client';
 import { NextResponse } from 'next/server';
 
