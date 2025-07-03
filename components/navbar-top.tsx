@@ -10,7 +10,12 @@ import { useMemo, useState } from 'react'; // useMemo import edildi
 import { UserStatus } from './user-status';
 
 export function TopNavbar() {
-	const { role, staffBranchId, staffBranchName, loading: authLoading } = useAuth(); // staffBranchName eklendi
+	const {
+		role,
+		staffBranchId,
+		staffBranchName,
+		loading: authLoading,
+	} = useAuth(); // staffBranchName eklendi
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
 	// useEffect(() => {
@@ -30,21 +35,21 @@ export function TopNavbar() {
 				label: 'Rol Yönetimi',
 				roles: ['admin'],
 			},
-                        {
-                                href: '/admin/branches',
-                                label: 'Şube Yönetimi',
-                                roles: ['admin', 'manager'],
-                        },
-                        {
-                                href: '/admin/financial-approvals',
-                                label: 'Finansal Onaylar',
-                                roles: ['admin', 'manager'],
-                        },
-                        {
-                                href: '/admin/financial-logs',
-                                label: 'Finansal Kayıtlar',
-                                roles: ['admin'],
-                        },
+			{
+				href: '/admin/branches',
+				label: 'Şube Yönetimi',
+				roles: ['admin', 'manager'],
+			},
+			{
+				href: '/admin/financial-approvals',
+				label: 'Finansal Onaylar',
+				roles: ['admin', 'manager'],
+			},
+			{
+				href: '/admin/financial-logs',
+				label: 'Finansal Kayıtlar',
+				roles: ['admin'],
+			},
 		],
 		[]
 	);
@@ -52,20 +57,19 @@ export function TopNavbar() {
 	const dynamicNavLinks = useMemo(() => {
 		const links = [...baseNavLinks];
 		if (role === 'branch_staff') {
-			if (staffBranchName) { // staffBranchId yerine staffBranchName kontrolü
+			if (staffBranchId) {
 				links.unshift({
-					href: `/branch/${encodeURIComponent(staffBranchName)}`, // Şube adını kullan ve URL encode et
+					href: `/branch/${encodeURIComponent(staffBranchId)}`,
 					label: 'Şubem',
 					roles: ['branch_staff'],
 				});
 			} else if (staffBranchId && !staffBranchName && !authLoading) {
-				// ID var ama isim henüz yüklenmemişse veya bulunamamışsa (ve yükleme bitmişse)
 				links.unshift({
-					href: '/authorization-pending', // Ya da bir hata/bekleme sayfasına yönlendir
+					href: '/authorization-pending',
 					label: 'Şubem (Bilgi Bekleniyor)',
 					roles: ['branch_staff'],
 				});
-			} else { // Ne ID ne de isim varsa (veya authLoading ise, bu durum filteredLinks'te ele alınır)
+			} else {
 				links.unshift({
 					href: '/authorization-pending',
 					label: 'Şubem (Atanmadı)',
@@ -74,10 +78,10 @@ export function TopNavbar() {
 			}
 		}
 		return links;
-	}, [role, staffBranchId, staffBranchName, authLoading, baseNavLinks]); // staffBranchName ve authLoading eklendi
+	}, [role, staffBranchId, staffBranchName, authLoading, baseNavLinks]);
 
 	const filteredLinks = useMemo(() => {
-		if (authLoading) return []; // Yükleniyorsa hiç link gösterme
+		if (authLoading) return [];
 		return dynamicNavLinks.filter((link) =>
 			link.roles.includes(role ?? 'guest')
 		);
