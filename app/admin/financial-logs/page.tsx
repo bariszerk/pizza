@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react'; // useCallback eklendi
 import { createClient } from '@/utils/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -16,20 +16,23 @@ type FinancialLog = {
   user_id: string;
   action: string;
   data: any;
-  branch: { name: string }[] | null;
-  profiles: { email: string }[] | null;
+  branchName: string | null;  // Zenginleştirilmiş veri için yeni alanlar
+  userEmail: string | null;   // Zenginleştirilmiş veri için yeni alanlar
 };
 
 export default function FinancialLogsPage() {
   const [logs, setLogs] = useState<FinancialLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const supabase = createClient();
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      setIsLoading(true);
-      const supabase = createClient();
-      const { data, error } = await supabase
+  const fetchAndEnrichLogs = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // 1. Ana log verilerini çek
+      const { data: logData, error: logError } = await supabase
         .from('financial_logs')
         .select(`
           id,
@@ -41,24 +44,18 @@ export default function FinancialLogsPage() {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching financial logs:', error);
-        setError(`Finansal kayıtları çekerken hata: ${error.message}`);
-      } else {
-        setLogs(data as FinancialLog[]);
+      if (logError) {
+        throw logError;
       }
-      setIsLoading(false);
-    };
 
-    fetchLogs();
-  }, []);
+      if (!logData) {
+        setLogs([]);
+        return;
+      }
 
-  // set user name and branch name in logs
-  useEffect(() => {
-    const enrichLogs = async () => {
-      const supabase = createClient();
+      // 2. Verileri zenginleştir
       const enrichedLogs = await Promise.all(
-        logs.map(async (log) => {
+        logData.map(async (log) => {
           const [branchResponse, userResponse] = await Promise.all([
             supabase
               .from('branches')
@@ -74,16 +71,26 @@ export default function FinancialLogsPage() {
 
           return {
             ...log,
-            branch: branchResponse.data ? [{ name: branchResponse.data.name }] : null,
-            profiles: userResponse.data ? [{ email: userResponse.data.email }] : null,
+            branchName: branchResponse.data?.name || 'Bilinmiyor',
+            userEmail: userResponse.data?.email || 'Bilinmiyor',
           };
         })
       );
-      setLogs(enrichedLogs);
-    };
 
-    enrichLogs();
-  }, [logs]);
+      setLogs(enrichedLogs);
+
+    } catch (err: any) {
+      console.error('Error fetching financial logs:', err);
+      setError(`Finansal kayıtları çekerken hata: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [supabase]); // useCallback bağımlılığı sadece supabase
+
+  // Sadece sayfa ilk yüklendiğinde çalışacak tek bir useEffect
+  useEffect(() => {
+    fetchAndEnrichLogs();
+  }, [fetchAndEnrichLogs]);
 
 
   const renderAction = (action: string) => {
@@ -92,6 +99,8 @@ export default function FinancialLogsPage() {
         return <Badge variant="success">Veri Eklendi</Badge>;
       case 'FINANCIAL_DATA_UPDATED':
         return <Badge variant="warning">Veri Güncellendi</Badge>;
+      case 'FINANCIAL_CHANGE_APPROVED':
+        return <Badge variant="success">Değişiklik Onaylandı</Badge>;
       default:
         return <Badge>{action}</Badge>;
     }
@@ -131,12 +140,12 @@ export default function FinancialLogsPage() {
                     <TableCell>
                       {format(new Date(log.created_at), 'PPpp', { locale: tr })}
                     </TableCell>
-                    <TableCell>{log.branch && log.branch[0]?.name || 'N/A'}</TableCell>
-                    <TableCell>{log.profiles && log.profiles[0]?.email || 'N/A'}</TableCell>
+                    <TableCell>{log.branchName}</TableCell>
+                    <TableCell>{log.userEmail}</TableCell>
                     <TableCell>{renderAction(log.action)}</TableCell>
                     <TableCell>
                       <Card className="bg-muted p-2 text-xs border border-border">
-                      <pre className="whitespace-pre-wrap break-all text-foreground">{JSON.stringify(log.data, null, 2)}</pre>
+                        <pre className="whitespace-pre-wrap break-all text-foreground">{JSON.stringify(log.data, null, 2)}</pre>
                       </Card>
                     </TableCell>
                   </TableRow>

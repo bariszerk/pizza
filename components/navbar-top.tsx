@@ -32,7 +32,7 @@ export function TopNavbar() {
 			},
 			{
 				href: '/admin/roles',
-				label: 'Rol Yönetimi',
+				label: 'Roller',
 				roles: ['admin'],
 			},
 			{
@@ -42,12 +42,12 @@ export function TopNavbar() {
 			},
 			{
 				href: '/admin/financial-approvals',
-				label: 'Finansal Onaylar',
+				label: 'Onaylar',
 				roles: ['admin', 'manager'],
 			},
 			{
 				href: '/admin/financial-logs',
-				label: 'Finansal Kayıtlar',
+				label: 'Loglar',
 				roles: ['admin'],
 			},
 		],
