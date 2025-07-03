@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadingSpinner } from '@/components/ui/loading-spinner'; // Added LoadingSpinner
 import { cn } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link'; // Added Link import
@@ -119,7 +120,14 @@ export function LoginForm({
 							{error && <div className="text-red-500 text-sm">{error}</div>}
 							<div className="flex flex-col gap-3">
 								<Button type="submit" className="w-full" disabled={loading}>
-									{loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+									{loading ? (
+										<div className="flex items-center justify-center">
+											<LoadingSpinner size={16} className="mr-2" />
+											Giriş yapılıyor...
+										</div>
+									) : (
+										'Giriş Yap'
+									)}
 								</Button>
 							</div>
 						</div>

@@ -1,6 +1,7 @@
 'use client';
 import { TopNavbar } from '@/components/navbar-top';
 import TransitionWrapper from '@/components/transition-wrapper';
+import { TopProgressBar } from '@/components/ui/top-progress-bar'; // Added import
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { useAutoSignOut } from '@/hooks/auto-sign-out';
@@ -19,6 +20,7 @@ export default function RootLayout({
 			</head>
 			<body>
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+					<TopProgressBar /> {/* Added TopProgressBar */}
 					<TopNavbar />
 					<main className="container mx-auto">
 						<TransitionWrapper>{children}</TransitionWrapper>
