@@ -12,6 +12,7 @@ import { tr } from 'date-fns/locale';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 
 type BranchFinancial = {
@@ -39,9 +40,10 @@ export default function BranchPage() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [isFormDisabled, setIsFormDisabled] = useState(false);
-	const [existingRecordId, setExistingRecordId] = useState<number | null>(null);
+       const [existingRecordId, setExistingRecordId] = useState<number | null>(null);
 
-	const supabase = createClient();
+       const supabase = createClient();
+       const { role, user } = useAuth();
 
 	const today = useMemo(() => startOfDay(new Date()), []);
 	const yesterday = useMemo(() => startOfDay(subDays(today, 1)), [today]);
@@ -95,23 +97,23 @@ export default function BranchPage() {
 					throw error;
 				}
 
-				let formShouldBeDisabled = true;
-				const allowEditToday = isSameDay(dateToLoad, today);
-				let allowEditYesterday = false;
+                                let formShouldBeDisabled = role === 'branch_staff' ? false : true;
+                                const allowEditToday = isSameDay(dateToLoad, today);
+                                let allowEditYesterday = false;
 
 				if (data) {
 					setExpenses(data.expenses.toString());
 					setEarnings(data.earnings.toString());
 					setSummary(data.summary || '');
 					setExistingRecordId(data.id);
-					if (allowEditToday) {
-						formShouldBeDisabled = false;
-					}
+                                        if (role !== 'branch_staff' && allowEditToday) {
+                                                formShouldBeDisabled = false;
+                                        }
 				} else {
 					allowEditYesterday = isSameDay(dateToLoad, yesterday);
-					if (allowEditToday || allowEditYesterday) {
-						formShouldBeDisabled = false;
-					}
+                                        if (role !== 'branch_staff' && (allowEditToday || allowEditYesterday)) {
+                                                formShouldBeDisabled = false;
+                                        }
 				}
 				setIsFormDisabled(formShouldBeDisabled);
 			} catch (error: unknown) {
@@ -172,57 +174,99 @@ export default function BranchPage() {
 			date: format(selectedDate, 'yyyy-MM-dd'),
 		};
 
-		try {
-			if (existingRecordId) {
-				// Güncelleme
-				if (!isSameDay(selectedDate, today)) {
-					toast.error(
-						'Yalnızca bugünün finansal verileri güncellenebilir.'
-					);
-					setIsSubmitting(false);
-					return;
-				}
-				const { error } = await supabase
-					.from('branch_financials')
-					.update(payload)
-					.eq('id', existingRecordId);
-				if (error) throw error;
+                try {
+                        if (role === 'branch_staff') {
+                                if (!existingRecordId && isSameDay(selectedDate, today)) {
+                                        const { error, data: insertedData } = await supabase
+                                                .from('branch_financials')
+                                                .insert([payload])
+                                                .select('id')
+                                                .single();
+                                        if (error) throw error;
 
-				const { data: { user } } = await supabase.auth.getUser();
-				if (user) {
-					const logData = {
-						branch_id: branchIdFromUrl,
-						user_id: user.id,
-						action: 'FINANCIAL_DATA_UPDATED',
-						data: payload,
-					};
-					await supabase.from('financial_logs').insert([logData]);
-				}
+                                        if (insertedData && user) {
+                                                const logData = {
+                                                        branch_id: branchIdFromUrl,
+                                                        user_id: user.id,
+                                                        action: 'FINANCIAL_DATA_ADDED',
+                                                        data: payload,
+                                                };
+                                                await supabase.from('financial_logs').insert([logData]);
+                                        }
+
+                                        toast.success('Finansal veriler başarıyla kaydedildi!', {
+                                                description: `${format(selectedDate, 'dd MMMM yyyy', {
+                                                        locale: tr,
+                                                })} tarihli yeni kayıt oluşturuldu.`,
+                                        });
+                                        if (insertedData) {
+                                                setExistingRecordId(insertedData.id);
+                                        }
+                                } else {
+                                        const { error } = await supabase.from('financial_change_requests').insert([
+                                                {
+                                                        branch_id: branchIdFromUrl,
+                                                        date: payload.date,
+                                                        expenses: expensesValue,
+                                                        earnings: earningsValue,
+                                                        summary,
+                                                        requester_id: user?.id ?? null,
+                                                        status: 'pending',
+                                                },
+                                        ]);
+                                        if (error) throw error;
+                                        toast.success('Değişiklik talebiniz yöneticilere iletildi.');
+                                        setIsSubmitting(false);
+                                        return;
+                                }
+                        } else if (existingRecordId) {
+                                // Güncelleme
+                                if (!isSameDay(selectedDate, today)) {
+                                        toast.error(
+                                                'Yalnızca bugünün finansal verileri güncellenebilir.'
+                                        );
+                                        setIsSubmitting(false);
+                                        return;
+                                }
+                                const { error } = await supabase
+                                        .from('branch_financials')
+                                        .update(payload)
+                                        .eq('id', existingRecordId);
+                                if (error) throw error;
+
+                                if (user) {
+                                        const logData = {
+                                                branch_id: branchIdFromUrl,
+                                                user_id: user.id,
+                                                action: 'FINANCIAL_DATA_UPDATED',
+                                                data: payload,
+                                        };
+                                        await supabase.from('financial_logs').insert([logData]);
+                                }
 
 				toast.success('Finansal veriler başarıyla güncellendi!', {
 					description: `${format(selectedDate, 'dd MMMM yyyy', {
 						locale: tr,
 					})} tarihli kayıt güncellendi.`,
 				});
-			} else {
-				// Yeni kayıt
-				const { error, data: insertedData } = await supabase
-					.from('branch_financials')
-					.insert([payload])
-					.select('id') // Sadece ID'yi al
-					.single();
-				if (error) throw error;
+                        } else {
+                                // Yeni kayıt
+                                const { error, data: insertedData } = await supabase
+                                        .from('branch_financials')
+                                        .insert([payload])
+                                        .select('id') // Sadece ID'yi al
+                                        .single();
+                                if (error) throw error;
 
-				const { data: { user } } = await supabase.auth.getUser();
-				if (insertedData && user) {
-					const logData = {
-						branch_id: branchIdFromUrl,
-						user_id: user.id,
-						action: 'FINANCIAL_DATA_ADDED',
-						data: payload,
-					};
-					await supabase.from('financial_logs').insert([logData]);
-				}
+                                if (insertedData && user) {
+                                        const logData = {
+                                                branch_id: branchIdFromUrl,
+                                                user_id: user.id,
+                                                action: 'FINANCIAL_DATA_ADDED',
+                                                data: payload,
+                                        };
+                                        await supabase.from('financial_logs').insert([logData]);
+                                }
 
 				toast.success('Finansal veriler başarıyla kaydedildi!', {
 					description: `${format(selectedDate, 'dd MMMM yyyy', {

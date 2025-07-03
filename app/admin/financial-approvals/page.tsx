@@ -1,0 +1,164 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
+import { toast } from 'sonner';
+
+type ChangeRequest = {
+  id: number;
+  branch_id: string;
+  date: string;
+  expenses: number;
+  earnings: number;
+  summary: string;
+  requester_id: string;
+  status: string;
+  branch?: { name: string }[] | null;
+  requester?: { email: string }[] | null;
+};
+
+export default function FinancialApprovalsPage() {
+  const [requests, setRequests] = useState<ChangeRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('financial_change_requests')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    if (error) {
+      toast.error('Talep listesi alınamadı');
+    } else {
+      setRequests(data as ChangeRequest[]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  useEffect(() => {
+    const enrich = async () => {
+      const enriched = await Promise.all(
+        requests.map(async (r) => {
+          const [b, u] = await Promise.all([
+            supabase.from('branches').select('name').eq('id', r.branch_id).single(),
+            supabase.from('profiles').select('email').eq('id', r.requester_id).single(),
+          ]);
+          return {
+            ...r,
+            branch: b.data ? [{ name: b.data.name }] : null,
+            requester: u.data ? [{ email: u.data.email }] : null,
+          };
+        })
+      );
+      setRequests(enriched);
+    };
+    if (requests.length) enrich();
+  }, [requests]);
+
+  const handleAction = async (req: ChangeRequest, approve: boolean) => {
+    const status = approve ? 'approved' : 'rejected';
+    const { error } = await supabase
+      .from('financial_change_requests')
+      .update({ status })
+      .eq('id', req.id);
+    if (error) {
+      toast.error('İşlem başarısız');
+      return;
+    }
+    if (approve) {
+      const payload = {
+        branch_id: req.branch_id,
+        expenses: req.expenses,
+        earnings: req.earnings,
+        summary: req.summary,
+        date: req.date,
+      };
+      const { data: existing, error: fetchErr } = await supabase
+        .from('branch_financials')
+        .select('id')
+        .eq('branch_id', req.branch_id)
+        .eq('date', req.date)
+        .maybeSingle();
+      if (!fetchErr) {
+        if (existing) {
+          await supabase.from('branch_financials').update(payload).eq('id', existing.id);
+        } else {
+          await supabase.from('branch_financials').insert([payload]);
+        }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('financial_logs').insert([{
+            branch_id: req.branch_id,
+            user_id: user.id,
+            action: 'FINANCIAL_CHANGE_APPROVED',
+            data: payload,
+          }]);
+        }
+      }
+    }
+    toast.success(`Talep ${approve ? 'onaylandı' : 'reddedildi'}`);
+    fetchRequests();
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">Finansal Değişiklik Talepleri</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center py-10">
+              <LoadingSpinner />
+              <p className="ml-2">Kayıtlar yükleniyor...</p>
+            </div>
+          ) : requests.length === 0 ? (
+            <p className="text-center">Bekleyen talep bulunmuyor.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tarih</TableHead>
+                  <TableHead>Şube</TableHead>
+                  <TableHead>Kullanıcı</TableHead>
+                  <TableHead>Veri</TableHead>
+                  <TableHead>İşlem</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {requests.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>{format(new Date(r.date), 'dd MMM yyyy', { locale: tr })}</TableCell>
+                    <TableCell>{r.branch?.[0]?.name || r.branch_id}</TableCell>
+                    <TableCell>{r.requester?.[0]?.email || r.requester_id}</TableCell>
+                    <TableCell>
+                      <Card className="bg-muted p-2 text-xs border border-border">
+                        <pre className="whitespace-pre-wrap break-all text-foreground">{JSON.stringify({ earnings: r.earnings, expenses: r.expenses, summary: r.summary }, null, 2)}</pre>
+                      </Card>
+                    </TableCell>
+                    <TableCell className="space-x-2">
+                      <Button size="sm" onClick={() => handleAction(r, true)}>Onayla</Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleAction(r, false)}>Reddet</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
