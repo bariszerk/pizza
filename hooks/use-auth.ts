@@ -3,14 +3,14 @@
 
 import { createClient } from '@/utils/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
-import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface Profile {
     role: string | null;
     staff_branch_id: string | null;
     staff_branch_name?: string | null; // Şube adını tutmak için eklendi
-    // Add other profile fields if necessary
+    first_name?: string | null;
+    last_name?: string | null;
 }
 
 interface AuthState {
@@ -20,14 +20,14 @@ interface AuthState {
     role: string | null;
     staffBranchId: string | null;
     staffBranchName: string | null; // Şube adını state'e ekle
+    firstName: string | null;
+    lastName: string | null;
     loading: boolean;
     error: Error | null;
 }
 
 export function useAuth(): AuthState {
     const supabase = createClient();
-    const router = useRouter();
-    const pathname = usePathname();
 
     const [session, setSession] = useState<Session | null>(null);
     const [user, setUser] = useState<User | null>(null);
@@ -35,6 +35,8 @@ export function useAuth(): AuthState {
     const [role, setRole] = useState<string | null>(null);
     const [staffBranchId, setStaffBranchId] = useState<string | null>(null);
     const [staffBranchName, setStaffBranchName] = useState<string | null>(null); // Şube adı için state
+    const [firstName, setFirstName] = useState<string | null>(null);
+    const [lastName, setLastName] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
 
@@ -59,7 +61,7 @@ export function useAuth(): AuthState {
         try {
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
-                .select('role, staff_branch_id')
+                .select('role, staff_branch_id, first_name, last_name')
                 .eq('id', userId)
                 .single();
 
@@ -72,6 +74,8 @@ export function useAuth(): AuthState {
                 setRole(null);
                 setStaffBranchId(null);
                 setStaffBranchName(null); // Şube adını da sıfırla
+                setFirstName(null);
+                setLastName(null);
                 fetchedProfileForUserIdRef.current = null;
                 // Do not throw, allow auth state to settle even if profile fails
             } else if (profileData) {
@@ -79,6 +83,8 @@ export function useAuth(): AuthState {
                 setProfile(profileData as Profile);
                 setRole(profileData.role);
                 setStaffBranchId(profileData.staff_branch_id);
+                setFirstName(profileData.first_name || null);
+                setLastName(profileData.last_name || null);
                 fetchedProfileForUserIdRef.current = userId;
 
                 // Şube ID'si varsa, şube adını çek
@@ -168,6 +174,8 @@ export function useAuth(): AuthState {
                 setRole(null);
                 setStaffBranchId(null);
                 setStaffBranchName(null); // Kullanıcı oturumu yoksa şube adını da sıfırla
+                setFirstName(null);
+                setLastName(null);
                 fetchedProfileForUserIdRef.current = null;
             }
             // Set loading to false after all processing for this auth change is done
@@ -195,5 +203,5 @@ export function useAuth(): AuthState {
         };
     }, [supabase, fetchUserProfile]); // Dependencies: supabase and fetchUserProfile
 
-    return { session, user, profile, role, staffBranchId, staffBranchName, loading, error }; // staffBranchName'i döndür
+    return { session, user, profile, role, staffBranchId, staffBranchName, firstName, lastName, loading, error }; // staffBranchName'i döndür
 }

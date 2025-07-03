@@ -63,6 +63,7 @@ export function SignUpForm({
 				.update({
 					first_name: firstName,
 					last_name: lastName,
+					display_name: `${firstName} ${lastName}`.trim(), // Add display_name
 					role: 'user', // Örneğin varsayılan bir rol atayabilirsiniz
 				})
 				.eq('id', data.user.id);
