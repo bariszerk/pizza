@@ -31,8 +31,8 @@ export async function middleware(request: NextRequest) {
                     response.cookies.set({ name, value, ...options });
                 },
                 remove(name: string, options: CookieOptions) {
-                    request.cookies.set({ name, value: '', ...options });
-                    response.cookies.set({ name, value: '', ...options });
+                    request.cookies.set(name, '', options);
+                    response.cookies.set(name, '', options);
                 },
             },
         }
@@ -89,7 +89,6 @@ export async function middleware(request: NextRequest) {
         // If email is not confirmed and user is not already on verify-email page, redirect them.
         // Also ensure we don't block API calls or static assets needed by the verify-email page itself,
         // though the matcher should handle most of this.
-        console.log(`Middleware: User ${user.id} email not confirmed. Redirecting to /verify-email.`);
         return NextResponse.redirect(new URL('/verify-email', request.url), { headers: response.headers });
     }
 

@@ -11,9 +11,9 @@ export default function TransitionWrapper({
 }) {
 	const pathname = usePathname();
 
-	useEffect(() => {
-		console.log('TransitionWrapper mounted with key:', pathname);
-	}, [pathname]);
+        useEffect(() => {
+                // Trigger re-render on route change for animation
+        }, [pathname]);
 
 	return (
 		<AnimatePresence mode="sync">

@@ -35,9 +35,6 @@ export function LoginForm({
 			email,
 			password,
 		});
-		if (data) {
-			console.log('Giriş başarılı:', data);
-		}
 
 		if (error) {
 			// Kullanıcı adı veya şifre yanlışsa genel bir hata mesajı göster

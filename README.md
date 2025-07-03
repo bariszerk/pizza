@@ -22,3 +22,25 @@ Bu uygulama, şubelerin finansal durumlarını merkezi bir noktadan izlemek, gel
 *   **Raporlama:** Temel finansal raporların (ileride eklenebilir) oluşturulması.
 
 Bu proje, işletmelerin veya kurumların şube ağlarındaki finansal akışlarını daha etkin bir şekilde yönetmelerine yardımcı olmayı hedefler.
+
+## Kurulum
+
+1. Bağımlılıkları yükleyin:
+
+   ```bash
+   npm install
+   ```
+
+2. Ortam değişkenlerini ayarlayın. `.env.example` dosyasını `.env` olarak kopyalayıp gerekli Supabase bilgilerini doldurun.
+
+3. Geliştirme sunucusunu başlatın:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Kod kalitesini kontrol etmek için:
+
+   ```bash
+   npm run lint
+   ```

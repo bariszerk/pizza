@@ -37,7 +37,6 @@ export function useAutoSignOut(
 				action: {
 					label: 'Oturumda Kal',
 					onClick: () => {
-						console.log('User chose to stay logged in.');
 						// resetActivityTimer will be called by user activity,
 						// or if they dismiss this specific toast by clicking the button.
 						// No explicit reset needed here if action itself counts as activity.
@@ -82,7 +81,6 @@ export function useAutoSignOut(
 			signOutUser,
 			timeoutMinutes * 60 * 1000
 		);
-		console.log('Auto Sign Out: Timers reset.');
 	}, [timeoutMinutes, warningMinutes, showWarningNotification, signOutUser]);
 
 	useEffect(() => {
@@ -115,7 +113,6 @@ export function useAutoSignOut(
 			if (typeof window !== 'undefined') {
 				events.forEach((e) => window.removeEventListener(e, handleActivity));
 			}
-			console.log('Auto Sign Out: Cleaned up.');
 		};
 	}, [resetActivityTimer]); // Only resetActivityTimer as dependency
 }
