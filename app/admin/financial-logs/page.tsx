@@ -53,6 +53,39 @@ export default function FinancialLogsPage() {
     fetchLogs();
   }, []);
 
+  // set user name and branch name in logs
+  useEffect(() => {
+    const enrichLogs = async () => {
+      const supabase = createClient();
+      const enrichedLogs = await Promise.all(
+        logs.map(async (log) => {
+          const [branchResponse, userResponse] = await Promise.all([
+            supabase
+              .from('branches')
+              .select('name')
+              .eq('id', log.branch_id)
+              .single(),
+            supabase
+              .from('profiles')
+              .select('email')
+              .eq('id', log.user_id)
+              .single(),
+          ]);
+
+          return {
+            ...log,
+            branch: branchResponse.data ? [{ name: branchResponse.data.name }] : null,
+            profiles: userResponse.data ? [{ email: userResponse.data.email }] : null,
+          };
+        })
+      );
+      setLogs(enrichedLogs);
+    };
+
+    enrichLogs();
+  }, [logs]);
+
+
   const renderAction = (action: string) => {
     switch (action) {
       case 'FINANCIAL_DATA_ADDED':
