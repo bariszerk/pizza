@@ -124,7 +124,7 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/dashboard', request.url), { headers: response.headers });
         }
         // Yöneticinin erişebileceği yollara /admin/branch-financials eklendi
-        const allowedManagerPaths = ['/dashboard', '/admin/branches', '/admin/branch-financials', '/private'];
+        const allowedManagerPaths = ['/dashboard', '/admin/branches', '/admin/branch-financials', '/admin/financial-logs', '/private', '/branch/'];
         if (allowedManagerPaths.some(p => pathname.startsWith(p)) || pathname === '/') {
             return response;
         }
