@@ -12,13 +12,13 @@ import { toast } from 'sonner';
 
 type ChangeRequest = {
   id: number;
-  branch_id: string;
-  date: string;
-  expenses: number;
-  earnings: number;
-  summary: string;
-  requester_id: string;
+  branch_id: string | null;
+  user_id: string | null;
+  requested_at: string;
   status: string;
+  old_data: Record<string, any> | null;
+  new_data: Record<string, any>;
+  notes: string | null;
   branch?: { name: string }[] | null;
   requester?: { email: string }[] | null;
 };
@@ -53,7 +53,7 @@ export default function FinancialApprovalsPage() {
         requests.map(async (r) => {
           const [b, u] = await Promise.all([
             supabase.from('branches').select('name').eq('id', r.branch_id).single(),
-            supabase.from('profiles').select('email').eq('id', r.requester_id).single(),
+            supabase.from('profiles').select('email').eq('id', r.user_id).single(),
           ]);
           return {
             ...r,
@@ -79,17 +79,17 @@ export default function FinancialApprovalsPage() {
     }
     if (approve) {
       const payload = {
-        branch_id: req.branch_id,
-        expenses: req.expenses,
-        earnings: req.earnings,
-        summary: req.summary,
-        date: req.date,
+        branch_id: req.branch_id ?? '',
+        expenses: req.new_data.expenses,
+        earnings: req.new_data.earnings,
+        summary: req.new_data.summary,
+        date: req.requested_at,
       };
       const { data: existing, error: fetchErr } = await supabase
         .from('branch_financials')
         .select('id')
-        .eq('branch_id', req.branch_id)
-        .eq('date', req.date)
+        .eq('branch_id', req.branch_id ?? '')
+        .eq('date', req.requested_at)
         .maybeSingle();
       if (!fetchErr) {
         if (existing) {
@@ -140,13 +140,81 @@ export default function FinancialApprovalsPage() {
               <TableBody>
                 {requests.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell>{format(new Date(r.date), 'dd MMM yyyy', { locale: tr })}</TableCell>
+                    <TableCell>{format(new Date(r.requested_at), 'dd MMM yyyy', { locale: tr })}</TableCell>
                     <TableCell>{r.branch?.[0]?.name || r.branch_id}</TableCell>
-                    <TableCell>{r.requester?.[0]?.email || r.requester_id}</TableCell>
+                    <TableCell>{r.requester?.[0]?.email || r.user_id}</TableCell>
                     <TableCell>
-                      <Card className="bg-muted p-2 text-xs border border-border">
-                        <pre className="whitespace-pre-wrap break-all text-foreground">{JSON.stringify({ earnings: r.earnings, expenses: r.expenses, summary: r.summary }, null, 2)}</pre>
-                      </Card>
+                      {r.old_data ? (
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <p className="font-semibold text-muted-foreground mb-1">Önce</p>
+                            <div className="space-y-1">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Toplam Kazanç:</span>
+                                <span className="font-medium text-green-600">
+                                  ₺{Number(r.old_data.earnings).toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Toplam Harcama:</span>
+                                <span className="font-medium text-red-600">
+                                  ₺{Number(r.old_data.expenses).toFixed(2)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Günün Özeti:</span>
+                                <p className="mt-1 p-1 bg-muted/50 rounded border whitespace-pre-wrap break-words">
+                                  {r.old_data.summary || 'Özet girilmemiş.'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-muted-foreground mb-1">Sonra</p>
+                            <div className="space-y-1">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Toplam Kazanç:</span>
+                                <span className="font-medium text-green-600">
+                                  ₺{Number(r.new_data.earnings).toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Toplam Harcama:</span>
+                                <span className="font-medium text-red-600">
+                                  ₺{Number(r.new_data.expenses).toFixed(2)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Günün Özeti:</span>
+                                <p className="mt-1 p-1 bg-muted/50 rounded border whitespace-pre-wrap break-words">
+                                  {r.new_data.summary || 'Özet girilmemiş.'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Toplam Kazanç:</span>
+                            <span className="font-medium text-green-600">
+                              ₺{Number(r.new_data.earnings).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Toplam Harcama:</span>
+                            <span className="font-medium text-red-600">
+                              ₺{Number(r.new_data.expenses).toFixed(2)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Günün Özeti:</span>
+                            <p className="mt-1 p-1 bg-muted/50 rounded border whitespace-pre-wrap break-words">
+                              {r.new_data.summary || 'Özet girilmemiş.'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="space-x-2">
                       <Button size="sm" onClick={() => handleAction(r, true)}>Onayla</Button>

@@ -42,6 +42,7 @@ export default function BranchPage() {
 	const [isLoadingData, setIsLoadingData] = useState(true);
         const [isFormDisabled, setIsFormDisabled] = useState(false);
         const [existingRecordId, setExistingRecordId] = useState<number | null>(null);
+        const [existingData, setExistingData] = useState<Omit<BranchFinancial, 'id' | 'created_at'> | null>(null);
         const [confirmOpen, setConfirmOpen] = useState(false);
         const [pendingPayload, setPendingPayload] = useState<Omit<BranchFinancial, 'id' | 'created_at'> | null>(null);
 
@@ -64,7 +65,8 @@ export default function BranchPage() {
 			setExpenses('');
 			setEarnings('');
 			setSummary('');
-			setExistingRecordId(null);
+                        setExistingRecordId(null);
+                        setExistingData(null);
 			setIsFormDisabled(false);
 			setBranchName(null); // Şube adını sıfırla
 
@@ -104,20 +106,28 @@ export default function BranchPage() {
                                 const allowEditToday = isSameDay(dateToLoad, today);
                                 let allowEditYesterday = false;
 
-				if (data) {
-					setExpenses(data.expenses.toString());
-					setEarnings(data.earnings.toString());
-					setSummary(data.summary || '');
-					setExistingRecordId(data.id);
-                                        if (role !== 'branch_staff' && allowEditToday) {
-                                                formShouldBeDisabled = false;
-                                        }
-				} else {
-					allowEditYesterday = isSameDay(dateToLoad, yesterday);
+                                if (data) {
+                                        setExpenses(data.expenses.toString());
+                                        setEarnings(data.earnings.toString());
+                                        setSummary(data.summary || '');
+                                        setExistingRecordId(data.id);
+                                        setExistingData({
+                                                branch_id: branchIdFromUrl,
+                                                expenses: data.expenses,
+                                                earnings: data.earnings,
+                                                summary: data.summary,
+                                                date: data.date,
+                                        });
+                                if (role !== 'branch_staff' && allowEditToday) {
+                                        formShouldBeDisabled = false;
+                                }
+                                } else {
+                                        setExistingData(null);
+                                        allowEditYesterday = isSameDay(dateToLoad, yesterday);
                                         if (role !== 'branch_staff' && (allowEditToday || allowEditYesterday)) {
                                                 formShouldBeDisabled = false;
                                         }
-				}
+                                }
 				setIsFormDisabled(formShouldBeDisabled);
 			} catch (error: unknown) {
 				const errorMessage =
@@ -146,12 +156,21 @@ export default function BranchPage() {
                         const { error } = await supabase.from('financial_change_requests').insert([
                                 {
                                         branch_id: branchIdFromUrl,
-                                        date: pendingPayload.date,
-                                        expenses: pendingPayload.expenses,
-                                        earnings: pendingPayload.earnings,
-                                        summary: pendingPayload.summary,
-                                        requester_id: user?.id ?? null,
+                                        user_id: user?.id ?? null,
+                                        requested_at: pendingPayload.date,
                                         status: 'pending',
+                                        old_data: existingData
+                                                ? {
+                                                        expenses: existingData.expenses,
+                                                        earnings: existingData.earnings,
+                                                        summary: existingData.summary,
+                                                }
+                                                : null,
+                                        new_data: {
+                                                expenses: pendingPayload.expenses,
+                                                earnings: pendingPayload.earnings,
+                                                summary: pendingPayload.summary,
+                                        },
                                 },
                         ]);
                         if (error) throw error;
