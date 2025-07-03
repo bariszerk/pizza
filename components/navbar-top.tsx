@@ -30,16 +30,21 @@ export function TopNavbar() {
 				label: 'Rol Yönetimi',
 				roles: ['admin'],
 			},
-			{
-				href: '/admin/branches',
-				label: 'Şube Yönetimi',
-				roles: ['admin', 'manager'],
-			},
-			{
-				href: '/admin/financial-logs',
-				label: 'Finansal Kayıtlar',
-				roles: ['admin'],
-			},
+                        {
+                                href: '/admin/branches',
+                                label: 'Şube Yönetimi',
+                                roles: ['admin', 'manager'],
+                        },
+                        {
+                                href: '/admin/financial-approvals',
+                                label: 'Finansal Onaylar',
+                                roles: ['admin', 'manager'],
+                        },
+                        {
+                                href: '/admin/financial-logs',
+                                label: 'Finansal Kayıtlar',
+                                roles: ['admin'],
+                        },
 		],
 		[]
 	);
