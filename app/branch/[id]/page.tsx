@@ -95,25 +95,15 @@ export default function BranchPage() {
 					throw error;
 				}
 
-				let formShouldBeDisabled = true;
-				const allowEditToday = isSameDay(dateToLoad, today);
-				let allowEditYesterday = false;
+                                if (data) {
+                                        setExpenses(data.expenses.toString());
+                                        setEarnings(data.earnings.toString());
+                                        setSummary(data.summary || '');
+                                        setExistingRecordId(data.id);
+                                }
 
-				if (data) {
-					setExpenses(data.expenses.toString());
-					setEarnings(data.earnings.toString());
-					setSummary(data.summary || '');
-					setExistingRecordId(data.id);
-					if (allowEditToday) {
-						formShouldBeDisabled = false;
-					}
-				} else {
-					allowEditYesterday = isSameDay(dateToLoad, yesterday);
-					if (allowEditToday || allowEditYesterday) {
-						formShouldBeDisabled = false;
-					}
-				}
-				setIsFormDisabled(formShouldBeDisabled);
+                                // Form sadece gelecekteki tarihler için devre dışı olsun
+                                setIsFormDisabled(isBefore(today, dateToLoad));
 			} catch (error: unknown) {
 				const errorMessage =
 					error instanceof Error ? error.message : 'bilinmeyen bir hata oluştu';
@@ -173,19 +163,12 @@ export default function BranchPage() {
 		};
 
 		try {
-			if (existingRecordId) {
-				// Güncelleme
-				if (!isSameDay(selectedDate, today)) {
-					toast.error(
-						'Yalnızca bugünün finansal verileri güncellenebilir.'
-					);
-					setIsSubmitting(false);
-					return;
-				}
-				const { error } = await supabase
-					.from('branch_financials')
-					.update(payload)
-					.eq('id', existingRecordId);
+                        if (existingRecordId) {
+                                // Güncelleme
+                                const { error } = await supabase
+                                        .from('branch_financials')
+                                        .update(payload)
+                                        .eq('id', existingRecordId);
 				if (error) throw error;
 
 				const { data: { user } } = await supabase.auth.getUser();
@@ -229,14 +212,10 @@ export default function BranchPage() {
 						locale: tr,
 					})} tarihli yeni kayıt oluşturuldu.`,
 				});
-				if (insertedData) {
-					setExistingRecordId(insertedData.id); // Yeni ID'yi sakla
-					// Bugün için yeni kayıt yapıldıysa formu disable etme
-					if (!isSameDay(selectedDate, today)) {
-						setIsFormDisabled(true);
-					}
-				}
-			}
+                                if (insertedData) {
+                                        setExistingRecordId(insertedData.id); // Yeni ID'yi sakla
+                                }
+                        }
 		} catch (error: unknown) {
 			const errorMessage =
 				error instanceof Error ? error.message : 'bilinmeyen bir hata';
@@ -249,10 +228,10 @@ export default function BranchPage() {
 		}
 	};
 
-	const isDateDisabledForCalendar = (dateToTest: Date) => {
-		// Gelecek tarihler ve 6 günden eski tarihler devre dışı
-		return isBefore(today, dateToTest) || isBefore(dateToTest, subDays(today, 6));
-	};
+        const isDateDisabledForCalendar = (dateToTest: Date) => {
+                // Sadece gelecek tarihler devre dışı olsun
+                return isBefore(today, dateToTest);
+        };
 
 	return (
 		<div className="container mx-auto px-4 py-8 md:py-12">
@@ -293,9 +272,9 @@ export default function BranchPage() {
 										className="rounded-md border shadow-sm p-3"
 										locale={tr} // Takvim dilini Türkçe yap
 									/>
-									<p className="text-xs text-muted-foreground mt-2 text-center lg:text-left">
-										Yalnızca bugün ve geçmiş 6 gün için işlem yapabilirsiniz.
-									</p>
+                                                                        <p className="text-xs text-muted-foreground mt-2 text-center lg:text-left">
+                                                                               Gelecekteki tarihler için işlem yapılamaz.
+                                                                        </p>
 								</div>
 
 								<form onSubmit={handleSubmit} className="space-y-5">
@@ -383,11 +362,10 @@ export default function BranchPage() {
 									isSameDay(selectedDate, yesterday) && !existingRecordId
 								) && ( // Dün ve kayıt yoksa durumu hariç
 									<p className="text-sm text-center text-orange-600 dark:text-orange-500 mt-4 p-3 bg-orange-50 dark:bg-orange-900/30 rounded-md border border-orange-200 dark:border-orange-800">
-										Seçili tarih ({format(selectedDate, 'dd MMMM', { locale: tr })}) için yalnızca veri görüntüleyebilirsiniz. <br />
-										Yeni kayıt eklemek veya düzenleme yapmak için lütfen bugünü
-										ya da (veri girilmemişse) dünü seçin.
-									</p>
-								)}
+                                                                        Seçili tarih ({format(selectedDate, 'dd MMMM', { locale: tr })}) gelecekte olduğu için yalnızca veri görüntüleyebilirsiniz. <br />
+                                                                               Yeni kayıt eklemek veya düzenleme yapmak için lütfen geçmiş bir tarih seçin.
+                                                                        </p>
+                                                                )}
 						</CardContent>
 					</Card>
 				</motion.div>
