@@ -135,8 +135,8 @@ export default function FinancialLogsPage() {
                     <TableCell>{log.profiles && log.profiles[0]?.email || 'N/A'}</TableCell>
                     <TableCell>{renderAction(log.action)}</TableCell>
                     <TableCell>
-                      <Card className="bg-gray-50 p-2 text-xs">
-                        <pre className="whitespace-pre-wrap break-all">{JSON.stringify(log.data, null, 2)}</pre>
+                      <Card className="bg-muted p-2 text-xs border border-border">
+                      <pre className="whitespace-pre-wrap break-all text-foreground">{JSON.stringify(log.data, null, 2)}</pre>
                       </Card>
                     </TableCell>
                   </TableRow>

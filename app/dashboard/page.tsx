@@ -879,10 +879,10 @@ function DashboardContent() {
 									}
 								}}
 								disabled={!selectedBranchId || pageLoading}
-								variant="outline" // Butonun görünümünü diğerleriyle uyumlu hale getirelim
-								className="h-10" // Yüksekliği DateRangePicker ile aynı yapalım
+								variant="outline"
+								className="h-9 flex items-center"
 							>
-								<DollarSignIcon className="h-3 w-3 mr-1" />
+								<DollarSignIcon className="h-4 w-4 mr-1" />
 								Finansal Veri Girişi
 							</Button>
 							<DateRangePicker
