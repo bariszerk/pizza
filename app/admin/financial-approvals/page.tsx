@@ -64,7 +64,9 @@ export default function FinancialApprovalsPage() {
       );
       setRequests(enriched);
     };
-    if (requests.length) enrich();
+    if (requests.length && !requests[0].branch) {
+      enrich();
+    }
   }, [requests]);
 
   const handleAction = async (req: ChangeRequest, approve: boolean) => {
@@ -109,7 +111,9 @@ export default function FinancialApprovalsPage() {
       }
     }
     toast.success(`Talep ${approve ? 'onaylandı' : 'reddedildi'}`);
-    fetchRequests();
+    setTimeout(() => {
+      fetchRequests();
+    }, 1500);
   };
 
   return (
