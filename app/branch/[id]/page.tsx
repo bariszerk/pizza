@@ -14,6 +14,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 
 type BranchFinancial = {
 	id?: number;
@@ -39,8 +40,10 @@ export default function BranchPage() {
 	);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isLoadingData, setIsLoadingData] = useState(true);
-	const [isFormDisabled, setIsFormDisabled] = useState(false);
-       const [existingRecordId, setExistingRecordId] = useState<number | null>(null);
+        const [isFormDisabled, setIsFormDisabled] = useState(false);
+        const [existingRecordId, setExistingRecordId] = useState<number | null>(null);
+        const [confirmOpen, setConfirmOpen] = useState(false);
+        const [pendingPayload, setPendingPayload] = useState<Omit<BranchFinancial, 'id' | 'created_at'> | null>(null);
 
        const supabase = createClient();
        const { role, user } = useAuth();
@@ -129,17 +132,47 @@ export default function BranchPage() {
 		loadData(selectedDate);
 	}, [selectedDate, branchIdFromUrl, supabase, today, yesterday]);
 
-	const handleDateSelect = (newDate: Date | undefined) => {
-		if (newDate && !isSameDay(newDate, selectedDate)) {
-			setSelectedDate(startOfDay(newDate));
-		}
-	};
+        const handleDateSelect = (newDate: Date | undefined) => {
+                if (newDate && !isSameDay(newDate, selectedDate)) {
+                        setSelectedDate(startOfDay(newDate));
+                }
+        };
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (isFormDisabled || isSubmitting || isLoadingData || !branchIdFromUrl) return;
+        const handleConfirmChangeRequest = async () => {
+                if (!pendingPayload) return;
+                setConfirmOpen(false);
+                setIsSubmitting(true);
+                try {
+                        const { error } = await supabase.from('financial_change_requests').insert([
+                                {
+                                        branch_id: branchIdFromUrl,
+                                        date: pendingPayload.date,
+                                        expenses: pendingPayload.expenses,
+                                        earnings: pendingPayload.earnings,
+                                        summary: pendingPayload.summary,
+                                        requester_id: user?.id ?? null,
+                                        status: 'pending',
+                                },
+                        ]);
+                        if (error) throw error;
+                        toast.success('Değişiklik talebiniz yöneticilere iletildi.');
+                } catch (error: unknown) {
+                        const errorMessage =
+                                error instanceof Error ? error.message : 'bilinmeyen bir hata';
+                        toast.error(`İşlem sırasında bir hata oluştu: ${errorMessage}`, {
+                                description: 'Lütfen girdiğiniz bilgileri kontrol edin ve tekrar deneyin.',
+                        });
+                } finally {
+                        setIsSubmitting(false);
+                        setPendingPayload(null);
+                }
+        };
 
-		setIsSubmitting(true);
+        const handleSubmit = async (e: React.FormEvent) => {
+                e.preventDefault();
+                if (isFormDisabled || isSubmitting || isLoadingData || !branchIdFromUrl) return;
+
+                setIsSubmitting(true);
 
 		// branchIdFromUrl zaten mevcut, tekrar sorgulamaya gerek yok.
 
@@ -203,19 +236,8 @@ export default function BranchPage() {
                                                 setExistingRecordId(insertedData.id);
                                         }
                                 } else {
-                                        const { error } = await supabase.from('financial_change_requests').insert([
-                                                {
-                                                        branch_id: branchIdFromUrl,
-                                                        date: payload.date,
-                                                        expenses: expensesValue,
-                                                        earnings: earningsValue,
-                                                        summary,
-                                                        requester_id: user?.id ?? null,
-                                                        status: 'pending',
-                                                },
-                                        ]);
-                                        if (error) throw error;
-                                        toast.success('Değişiklik talebiniz yöneticilere iletildi.');
+                                        setPendingPayload(payload);
+                                        setConfirmOpen(true);
                                         setIsSubmitting(false);
                                         return;
                                 }
@@ -430,7 +452,16 @@ export default function BranchPage() {
 						</CardContent>
 					</Card>
 				</motion.div>
-			</AnimatePresence>
-		</div>
-	);
+                        </AnimatePresence>
+                        <ConfirmDialog
+                                open={confirmOpen}
+                                onClose={() => setConfirmOpen(false)}
+                                onConfirm={handleConfirmChangeRequest}
+                                title="Değişiklik Talebini Gönder"
+                                description="Seçili tarihte mevcut bir kayıt bulunduğu için değişiklik talebi oluşturulacaktır. Onaylıyor musunuz?"
+                                confirmText="Talebi Gönder"
+                                cancelText="Vazgeç"
+                        />
+                </div>
+        );
 }
