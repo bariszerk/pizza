@@ -189,8 +189,8 @@ export default function AdminBranchFinancialsPage() {
 				setSummary(data.summary || '');
 				setExistingRecordId(data.id);
 			}
-			// Yöneticiler için form her zaman etkin olmalı (gelecek tarihler hariç)
-			setIsFormDisabled(isBefore(dateToLoad, today) ? false : !isSameDay(dateToLoad, today));
+                        // Yöneticiler için form her zaman etkin olmalı
+                        setIsFormDisabled(false);
 
 		} catch (error: unknown) {
 			const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu';
@@ -214,25 +214,16 @@ export default function AdminBranchFinancialsPage() {
 	}, [selectedDate, isAuthorized, branchNameParam, loadFinancialData]); // branchId yerine branchNameParam
 
 
-	const handleDateSelect = (newDate: Date | undefined) => {
-		if (newDate && !isSameDay(newDate, selectedDate)) {
-			if (isBefore(newDate, today) || isSameDay(newDate, today)) {
-				setSelectedDate(startOfDay(newDate));
-			} else {
-				toast.info('Gelecek tarihler için işlem yapılamaz.');
-			}
-		}
-	};
+        const handleDateSelect = (newDate: Date | undefined) => {
+                if (newDate && !isSameDay(newDate, selectedDate)) {
+                        setSelectedDate(startOfDay(newDate));
+                }
+        };
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (isFormDisabled || isSubmitting || isLoadingData || !isAuthorized) return;
 
-		// Gelecek tarih kontrolü
-		if (isBefore(today, selectedDate)) {
-			toast.error('Gelecek bir tarih için veri kaydedilemez.');
-			return;
-		}
 
 		setIsSubmitting(true);
 
@@ -345,9 +336,9 @@ export default function AdminBranchFinancialsPage() {
 		}
 	};
 
-	const isDateDisabledForCalendar = (dateToTest: Date) => {
-		return isBefore(today, dateToTest); // Yöneticiler sadece gelecekteki tarihleri seçemesin
-	};
+        const isDateDisabledForCalendar = (_dateToTest: Date) => {
+                return false; // Yöneticiler için tarih kısıtlaması yok
+        };
 
 	if (isLoadingData && !branchName) { // Henüz şube adı veya yetki yüklenmemişse genel yükleme
 		return (
@@ -494,11 +485,7 @@ export default function AdminBranchFinancialsPage() {
 								</div>
 							)}
 
-							{isFormDisabled && !isLoadingData && !isSubmitting && isBefore(today, selectedDate) && (
-                                <p className="text-sm text-center text-orange-600 dark:text-orange-500 mt-4 p-3 bg-orange-50 dark:bg-orange-900/30 rounded-md border border-orange-200 dark:border-orange-800">
-                                    Gelecek bir tarih ({format(selectedDate, 'dd MMMM', { locale: tr })}) için işlem yapılamaz.
-                                </p>
-                            )}
+
 						</CardContent>
 					</Card>
 				</motion.div>
