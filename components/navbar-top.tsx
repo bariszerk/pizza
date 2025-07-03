@@ -2,11 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import { ModeToggle } from '@/components/ui/theme-toggle-button';
-import { useAuth } from '@/hooks/use-auth'; // Import the custom hook
+import { useAuth } from '@/hooks/use-auth';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MenuIcon, XIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react'; // useMemo import edildi
+import { useMemo, useState, useEffect } from 'react'; // useEffect eklendi
 import { UserStatus } from './user-status';
 
 export function TopNavbar() {
@@ -15,13 +15,32 @@ export function TopNavbar() {
 		staffBranchId,
 		staffBranchName,
 		loading: authLoading,
-	} = useAuth(); // staffBranchName eklendi
+	} = useAuth();
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+	const [hasPendingApprovals, setHasPendingApprovals] = useState(false);
 
-	// useEffect(() => {
-	//  // Optional: Log auth state changes for debugging
-	//  console.log('TopNavbar auth state:', { role, staffBranchId, staffBranchName, authLoading });
-	// }, [role, staffBranchId, staffBranchName, authLoading]);
+	useEffect(() => {
+		if (role === 'admin' || role === 'manager') {
+			const fetchPendingCount = async () => {
+				try {
+					const response = await fetch('/api/approvals/pending-count');
+					if (response.ok) {
+						const data = await response.json();
+						setHasPendingApprovals(data.count > 0);
+					}
+				} catch (error) {
+					console.error('Failed to fetch pending approvals count:', error);
+				}
+			};
+
+			fetchPendingCount();
+
+			const interval = setInterval(fetchPendingCount, 30000);
+			return () => clearInterval(interval);
+		} else {
+			setHasPendingApprovals(false);
+		}
+	}, [role]);
 
 	const baseNavLinks = useMemo(
 		() => [
@@ -91,8 +110,50 @@ export function TopNavbar() {
 		setIsMobileMenuOpen((prev) => !prev);
 	};
 
-	// Navigasyon linklerini gösterme koşulu: !loading && role ve filtrelenmiş link varsa
 	const showLinks = !authLoading && role && filteredLinks.length > 0;
+
+	const renderNavLink = (link: { href: string; label: string }) => {
+		const isApprovalsLink = link.label === 'Onaylar';
+		return (
+			<Link key={link.href} href={link.href} passHref legacyBehavior>
+				<Button asChild variant="ghost" className="text-sm relative">
+					<a>
+						{link.label}
+						{isApprovalsLink && hasPendingApprovals && (
+							<span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+								<span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+							</span>
+						)}
+					</a>
+				</Button>
+			</Link>
+		);
+	};
+
+	const renderMobileNavLink = (link: { href: string; label: string }) => {
+		const isApprovalsLink = link.label === 'Onaylar';
+		return (
+			<Link key={link.href} href={link.href} passHref legacyBehavior>
+				<Button
+					asChild
+					variant="ghost"
+					className="w-full justify-start text-base py-3 relative"
+					onClick={() => setIsMobileMenuOpen(false)}
+				>
+					<a>
+						{link.label}
+						{isApprovalsLink && hasPendingApprovals && (
+							<span className="absolute top-2 right-2 flex h-3 w-3">
+								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+								<span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+							</span>
+						)}
+					</a>
+				</Button>
+			</Link>
+		);
+	};
 
 	return (
 		<header className="bg-background border-b border-border px-4 py-3 sticky top-0 z-50">
@@ -117,14 +178,7 @@ export function TopNavbar() {
 				</div>
 
 				<nav className="hidden lg:flex items-center space-x-1">
-					{showLinks &&
-						filteredLinks.map((link) => (
-							<Link key={link.href} href={link.href} passHref legacyBehavior>
-								<Button asChild variant="ghost" className="text-sm">
-									<a>{link.label}</a>
-								</Button>
-							</Link>
-						))}
+					{showLinks && filteredLinks.map(renderNavLink)}
 				</nav>
 
 				<div className="flex items-center space-x-2 sm:space-x-4">
@@ -143,24 +197,7 @@ export function TopNavbar() {
 						className="lg:hidden overflow-hidden border-t border-border"
 					>
 						<div className="flex flex-col space-y-1 px-2 pt-2 pb-3">
-							{showLinks &&
-								filteredLinks.map((link) => (
-									<Link
-										key={link.href}
-										href={link.href}
-										passHref
-										legacyBehavior
-									>
-										<Button
-											asChild
-											variant="ghost"
-											className="w-full justify-start text-base py-3"
-											onClick={() => setIsMobileMenuOpen(false)}
-										>
-											<a>{link.label}</a>
-										</Button>
-									</Link>
-								))}
+							{showLinks && filteredLinks.map(renderMobileNavLink)}
 						</div>
 					</motion.nav>
 				)}
