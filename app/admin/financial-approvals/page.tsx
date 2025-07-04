@@ -30,16 +30,70 @@ export default function FinancialApprovalsPage() {
 
   const fetchRequests = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    let query = supabase
       .from('financial_change_requests')
       .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+      .eq('status', 'pending');
+
+    if (profile.role === 'manager') {
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('manager_branch_assignments')
+        .select('branch_id')
+        .eq('manager_id', user.id);
+
+      if (assignmentsError) {
+        toast.error('Talep listesi alınamadı');
+        setRequests([]);
+        setLoading(false);
+        return;
+      }
+
+      const branchIds = assignments?.map((a) => a.branch_id) ?? [];
+      if (branchIds.length === 0) {
+        setRequests([]);
+        setLoading(false);
+        return;
+      }
+
+      query = query.in('branch_id', branchIds);
+    } else if (profile.role !== 'admin') {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
     if (error) {
       toast.error('Talep listesi alınamadı');
+      setRequests([]);
     } else {
       setRequests(data as ChangeRequest[]);
     }
+
     setLoading(false);
   };
 

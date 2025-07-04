@@ -17,15 +17,37 @@ export async function GET() {
         .eq('id', user.id)
         .single();
 
-    // Sadece admin ve manager rollerinin bekleyen talepleri görmesine izin ver
-    if (profile?.role !== 'admin' && profile?.role !== 'manager') {
+    if (!profile) {
         return NextResponse.json({ count: 0 });
     }
 
-    const { count, error } = await supabase
+    let query = supabase
         .from('financial_change_requests')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
+
+    if (profile.role === 'manager') {
+        const { data: assignments, error: assignmentsError } = await supabase
+            .from('manager_branch_assignments')
+            .select('branch_id')
+            .eq('manager_id', user.id);
+
+        if (assignmentsError) {
+            console.error('Error fetching manager assignments:', assignmentsError);
+            return NextResponse.json({ count: 0 });
+        }
+
+        const branchIds = assignments?.map((a) => a.branch_id) ?? [];
+        if (branchIds.length === 0) {
+            return NextResponse.json({ count: 0 });
+        }
+
+        query = query.in('branch_id', branchIds);
+    } else if (profile.role !== 'admin') {
+        return NextResponse.json({ count: 0 });
+    }
+
+    const { count, error } = await query;
 
     if (error) {
         console.error('Error fetching pending approvals count:', error);
