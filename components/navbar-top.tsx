@@ -36,7 +36,11 @@ export function TopNavbar() {
 			fetchPendingCount();
 
 			const interval = setInterval(fetchPendingCount, 30000);
-			return () => clearInterval(interval);
+			window.addEventListener('approvals-updated', fetchPendingCount);
+			return () => {
+				clearInterval(interval);
+				window.removeEventListener('approvals-updated', fetchPendingCount);
+			};
 		} else {
 			setHasPendingApprovals(false);
 		}

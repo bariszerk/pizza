@@ -67,7 +67,6 @@ import {
 	type IncomeExpenseChartDataPoint,
 } from './dashboard_pages/income-expense-chart';
 
-
 type BranchInfo = {
 	id: string;
 	name: string;
@@ -441,7 +440,7 @@ function DashboardContent() {
 		if (!authLoading && user && userRoleFromAuth) {
 			initializeDashboard();
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [user, userRoleFromAuth, authLoading]);
 
 	useEffect(() => {
@@ -507,7 +506,7 @@ function DashboardContent() {
 				fetchDashboardData(selectedBranchId, range);
 			} else if (selectedBranchId && preset) {
 				// If range.from is not available but preset is, try to get range from preset
-				const presetObject = PRESETS_LOCAL.find(p => p.value === preset);
+				const presetObject = PRESETS_LOCAL.find((p) => p.value === preset);
 				if (presetObject) {
 					fetchDashboardData(selectedBranchId, presetObject.getDateRange());
 				}
@@ -531,7 +530,9 @@ function DashboardContent() {
 			if (branchId && selectedDateRange?.from) {
 				fetchDashboardData(branchId, selectedDateRange);
 			} else if (branchId && currentPresetValue) {
-				const presetObject = PRESETS_LOCAL.find(p => p.value === currentPresetValue);
+				const presetObject = PRESETS_LOCAL.find(
+					(p) => p.value === currentPresetValue
+				);
 				if (presetObject) {
 					fetchDashboardData(branchId, presetObject.getDateRange());
 				}
@@ -836,11 +837,17 @@ function DashboardContent() {
 
 	return (
 		<>
-			<div className="flex flex-col"> {/* Removed hidden and md:flex */}
-				<div className="flex-1 space-y-4 p-4 md:p-8 pt-6"> {/* Adjusted padding for mobile */}
+			<div className="flex flex-col">
+				{' '}
+				{/* Removed hidden and md:flex */}
+				<div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+					{' '}
+					{/* Adjusted padding for mobile */}
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
 						<div>
-							<h2 className="text-2xl sm:text-3xl font-bold tracking-tight"> {/* Responsive font size */}
+							<h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+								{' '}
+								{/* Responsive font size */}
 								Genel Durum Paneli
 							</h2>
 							<p className="text-sm text-muted-foreground mt-1">
@@ -875,7 +882,16 @@ function DashboardContent() {
 							<Button
 								onClick={() => {
 									if (selectedBranchId) {
-										router.push(`/branch/${selectedBranchId}`);
+										const foundBranch = availableBranches.find(
+											(b) => b.id === selectedBranchId
+										);
+										if (foundBranch) {
+											router.push(
+												`/admin/branch-financials/${encodeURIComponent(
+													foundBranch.name
+												)}`
+											);
+										}
 									}
 								}}
 								disabled={!selectedBranchId || pageLoading}
@@ -893,7 +909,6 @@ function DashboardContent() {
 							/>
 						</div>
 					</div>
-
 					<Tabs defaultValue="overview" className="space-y-4">
 						<TabsContent value="overview" className="space-y-4">
 							<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -989,7 +1004,9 @@ function DashboardContent() {
 								</Card>
 							</div>
 
-							<div className="grid grid-cols-1 lg:grid-cols-2 gap-4"> {/* Yan yana için lg:grid-cols-2 */}
+							<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+								{' '}
+								{/* Yan yana için lg:grid-cols-2 */}
 								<Card className="col-span-1">
 									<CardHeader>
 										<CardTitle>Günlük Net Kâr Trendi</CardTitle>
@@ -1014,7 +1031,7 @@ function DashboardContent() {
 										{overviewData && overviewData.length > 0 ? (
 											<IncomeExpenseChart
 												// IncomeExpenseChartDataPoint[] bekliyor, gideri eklemeliyiz
-												data={overviewData.map(d => ({
+												data={overviewData.map((d) => ({
 													...d,
 													kazanc: d.kazanc ?? 0,
 													gider: (d.kazanc ?? 0) - d.netKar, // Eğer kazanc tanımsızsa gider 0
