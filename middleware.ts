@@ -202,7 +202,8 @@ export async function middleware(request: NextRequest) {
 			staffBranchId && pathname === `/branch/${staffBranchId}`;
 		const isAtPrivate = pathname.startsWith('/private');
 		const isAtRoot = pathname === '/';
-		if (isAtOwnBranchPage || isAtPrivate || isAtRoot) {
+		const isAtRequests = pathname === '/my-change-requests';
+		if (isAtOwnBranchPage || isAtPrivate || isAtRoot || isAtRequests) {
 			return response;
 		}
 		if (staffBranchId) {

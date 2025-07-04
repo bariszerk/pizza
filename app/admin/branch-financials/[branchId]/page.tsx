@@ -198,7 +198,7 @@ export default function AdminBranchFinancialsPage() {
 		} finally {
 			setIsLoadingData(false);
 		}
-	}, [branchNameParam, supabase, isAuthorized, today]); // branchId yerine branchNameParam
+	}, [branchNameParam, supabase, isAuthorized]); // branchId yerine branchNameParam
 
 	// İlk Yükleme (Yetki ve Şube Adı)
 	useEffect(() => {
@@ -340,7 +340,7 @@ export default function AdminBranchFinancialsPage() {
 		}
 	};
 
-	const isDateDisabledForCalendar = (dateToTest: Date) => {
+	const isDateDisabledForCalendar = () => {
 		return false;
 	};
 

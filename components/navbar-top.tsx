@@ -80,6 +80,12 @@ export function TopNavbar() {
 	const dynamicNavLinks = useMemo(() => {
 		const links = [...baseNavLinks];
 		if (role === 'branch_staff') {
+			links.unshift({
+				href: '/my-change-requests',
+				label: 'Taleplerim',
+				roles: ['branch_staff'],
+			});
+
 			if (staffBranchId) {
 				links.unshift({
 					href: `/branch/${encodeURIComponent(staffBranchId)}`,

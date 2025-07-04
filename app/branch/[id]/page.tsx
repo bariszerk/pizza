@@ -52,6 +52,12 @@ export default function BranchPage() {
 	const today = useMemo(() => startOfDay(new Date()), []);
 	const yesterday = useMemo(() => startOfDay(subDays(today, 1)), [today]);
 
+	const isPastDate = useMemo(
+		() => isBefore(selectedDate, today),
+		[selectedDate, today]
+	);
+
+
 	useEffect(() => {
 		if (!branchIdFromUrl) {
 			setIsLoadingData(false);
@@ -140,7 +146,7 @@ export default function BranchPage() {
 		};
 
 		loadData(selectedDate);
-	}, [selectedDate, branchIdFromUrl, supabase, today, yesterday]);
+	}, [selectedDate, branchIdFromUrl, supabase, today, yesterday, role]);
 
         const handleDateSelect = (newDate: Date | undefined) => {
                 if (newDate && !isSameDay(newDate, selectedDate)) {
@@ -433,7 +439,7 @@ export default function BranchPage() {
 										type="submit"
 										className="w-full h-11 text-md font-semibold"
 										disabled={isFormDisabled || isLoadingData || isSubmitting}
-									>
+										>
 										{isSubmitting ? (
 											<div className="flex items-center justify-center">
 												<LoadingSpinner size={16} />
@@ -441,6 +447,8 @@ export default function BranchPage() {
 											</div>
 										) : isLoadingData ? (
 											'Yükleniyor...'
+										) : isPastDate ? (
+											'Güncelleme Talebi Oluştur'
 										) : existingRecordId && isSameDay(selectedDate, today) ? (
 											'Güncel Kaydı Düzenle'
 										) : (
