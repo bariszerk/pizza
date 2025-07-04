@@ -111,9 +111,8 @@ export default function FinancialApprovalsPage() {
       }
     }
     toast.success(`Talep ${approve ? 'onaylandı' : 'reddedildi'}`);
-    setTimeout(() => {
-      fetchRequests();
-    }, 1500);
+    await fetchRequests();
+    window.dispatchEvent(new Event('approvals-updated'));
   };
 
   return (

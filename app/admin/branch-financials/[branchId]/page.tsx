@@ -189,8 +189,7 @@ export default function AdminBranchFinancialsPage() {
 				setSummary(data.summary || '');
 				setExistingRecordId(data.id);
 			}
-			// Yöneticiler için form her zaman etkin olmalı (gelecek tarihler hariç)
-			setIsFormDisabled(isBefore(dateToLoad, today) ? false : !isSameDay(dateToLoad, today));
+			setIsFormDisabled(false);
 
 		} catch (error: unknown) {
 			const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu';
@@ -216,11 +215,7 @@ export default function AdminBranchFinancialsPage() {
 
 	const handleDateSelect = (newDate: Date | undefined) => {
 		if (newDate && !isSameDay(newDate, selectedDate)) {
-			if (isBefore(newDate, today) || isSameDay(newDate, today)) {
 				setSelectedDate(startOfDay(newDate));
-			} else {
-				toast.info('Gelecek tarihler için işlem yapılamaz.');
-			}
 		}
 	};
 
@@ -346,7 +341,7 @@ export default function AdminBranchFinancialsPage() {
 	};
 
 	const isDateDisabledForCalendar = (dateToTest: Date) => {
-		return isBefore(today, dateToTest); // Yöneticiler sadece gelecekteki tarihleri seçemesin
+		return false;
 	};
 
 	if (isLoadingData && !branchName) { // Henüz şube adı veya yetki yüklenmemişse genel yükleme
@@ -493,12 +488,6 @@ export default function AdminBranchFinancialsPage() {
 									<span>Seçili tarih için veriler yükleniyor, lütfen bekleyin...</span>
 								</div>
 							)}
-
-							{isFormDisabled && !isLoadingData && !isSubmitting && isBefore(today, selectedDate) && (
-                                <p className="text-sm text-center text-orange-600 dark:text-orange-500 mt-4 p-3 bg-orange-50 dark:bg-orange-900/30 rounded-md border border-orange-200 dark:border-orange-800">
-                                    Gelecek bir tarih ({format(selectedDate, 'dd MMMM', { locale: tr })}) için işlem yapılamaz.
-                                </p>
-                            )}
 						</CardContent>
 					</Card>
 				</motion.div>
