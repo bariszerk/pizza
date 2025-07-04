@@ -50,19 +50,19 @@ export default function MyChangeRequestsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const handleCancel = async (req: ChangeRequest) => {
-    const { error } = await supabase
+    const handleCancel = async (req: ChangeRequest) => {
+    const { data, error } = await supabase
       .from('financial_change_requests')
       .update({ status: 'cancelled' })
-      .eq('id', req.id);
-    if (error) {
+      .eq('id', req.id)
+      .select('status')
+      .single();
+    if (error || !data) {
       toast.error('Talep iptal edilemedi');
       return;
     }
     toast.success('Talep iptal edildi');
-    setRequests((prev) =>
-      prev.map((r) => (r.id === req.id ? { ...r, status: 'cancelled' } : r))
-    );
+    await fetchRequests();
     window.dispatchEvent(new Event('approvals-updated'));
   };
 
