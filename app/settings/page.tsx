@@ -52,7 +52,7 @@ export default function PrivatePage() {
                         setLoading(false);
                 };
 		getUser();
-	}, [router, supabase.auth]);
+	}, [router, supabase, supabase.auth]);
 
         const handleProfileUpdate = async (e: FormEvent) => {
                 e.preventDefault();
@@ -65,7 +65,7 @@ export default function PrivatePage() {
                 if (fullName.trim() !== '') {
                         const parts = fullName.trim().split(' ');
                         profileUpdates.first_name = parts.shift() || '';
-                        profileUpdates.last_name = parts.join(' ') || null;
+                        profileUpdates.last_name = parts.join(' ') || '';
                 }
 
                 const userUpdateData: { phone?: string } = {};
