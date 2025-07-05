@@ -163,7 +163,7 @@ export async function middleware(request: NextRequest) {
 			'/admin/branch-financials',
 			'/admin/financial-approvals',
 			'/admin/financial-logs',
-			'/private',
+                        '/settings',
 			'/branch/',
 		];
 		if (
@@ -200,7 +200,7 @@ export async function middleware(request: NextRequest) {
 		}
 		const isAtOwnBranchPage =
 			staffBranchId && pathname === `/branch/${staffBranchId}`;
-		const isAtPrivate = pathname.startsWith('/private');
+                const isAtPrivate = pathname.startsWith('/settings');
 		const isAtRoot = pathname === '/';
 		const isAtRequests = pathname === '/my-change-requests';
 		if (isAtOwnBranchPage || isAtPrivate || isAtRoot || isAtRequests) {
@@ -223,7 +223,7 @@ export async function middleware(request: NextRequest) {
 	}
 
 	if (userRole === 'user') {
-		const allowedUserPaths = ['/authorization-pending', '/private', '/'];
+                const allowedUserPaths = ['/authorization-pending', '/settings', '/'];
 		if (allowedUserPaths.includes(pathname)) {
 			return response;
 		}
