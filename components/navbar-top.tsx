@@ -120,7 +120,13 @@ export function TopNavbar() {
 		setIsMobileMenuOpen((prev) => !prev);
 	};
 
-	const showLinks = !authLoading && role && filteredLinks.length > 0;
+        const showLinks = !authLoading && role && filteredLinks.length > 0;
+
+        useEffect(() => {
+                if (!showLinks) {
+                        setIsMobileMenuOpen(false);
+                }
+        }, [showLinks]);
 
 	const renderNavLink = (link: { href: string; label: string }) => {
 		const isApprovalsLink = link.label === 'Onaylar';
@@ -168,18 +174,20 @@ export function TopNavbar() {
 	return (
 		<header className="bg-background border-b border-border px-4 py-3 sticky top-0 z-50">
 			<div className="container mx-auto flex items-center justify-between">
-				<div className="flex items-center space-x-3">
-					<button
-						className="lg:hidden p-2 focus:outline-none"
-						onClick={toggleMobileMenu}
-						aria-label="Menüyü Aç"
-					>
-						{isMobileMenuOpen ? (
-							<XIcon className="h-6 w-6" />
-						) : (
-							<MenuIcon className="h-6 w-6" />
-						)}
-					</button>
+                                <div className="flex items-center space-x-3">
+                                        {showLinks && (
+                                                <button
+                                                        className="lg:hidden p-2 focus:outline-none"
+                                                        onClick={toggleMobileMenu}
+                                                        aria-label="Menüyü Aç"
+                                                >
+                                                        {isMobileMenuOpen ? (
+                                                                <XIcon className="h-6 w-6" />
+                                                        ) : (
+                                                                <MenuIcon className="h-6 w-6" />
+                                                        )}
+                                                </button>
+                                        )}
 					<div className="text-lg font-semibold">
 						<Link href={role && role !== 'user' ? '/dashboard' : '/'}>
 							Zerkify
@@ -197,10 +205,10 @@ export function TopNavbar() {
 				</div>
 			</div>
 
-			<AnimatePresence>
-				{isMobileMenuOpen && (
-					<motion.nav
-						initial={{ height: 0, opacity: 0 }}
+                        <AnimatePresence>
+                                {showLinks && isMobileMenuOpen && (
+                                        <motion.nav
+                                                initial={{ height: 0, opacity: 0 }}
 						animate={{ height: 'auto', opacity: 1 }}
 						exit={{ height: 0, opacity: 0 }}
 						transition={{ duration: 0.2 }}
