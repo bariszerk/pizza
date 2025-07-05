@@ -16,10 +16,11 @@ export default function PrivatePage() {
 	const [loading, setLoading] = useState(true);
 
 	// Profile state
-	const [fullName, setFullName] = useState('');
-	const [phone, setPhone] = useState('');
-	const [profileMessage, setProfileMessage] = useState('');
-	const [profileError, setProfileError] = useState('');
+        const [fullName, setFullName] = useState('');
+        const [phone, setPhone] = useState('');
+        const [profileMessage, setProfileMessage] = useState('');
+        const [profileError, setProfileError] = useState('');
+        const [userProfile, setUserProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
 
 	// Password state
 	const [currentPassword, setCurrentPassword] = useState('');
@@ -29,73 +30,98 @@ export default function PrivatePage() {
 	const [passwordError, setPasswordError] = useState('');
 
 	useEffect(() => {
-		const getUser = async () => {
-			const { data, error } = await supabase.auth.getUser();
-			if (error || !data?.user) {
-				router.push('/login');
-			} else {
-				setUser(data.user);
-				// Initialize fullName and phone state for user input, leave them empty initially
-				// The fetched metadata will be used for placeholders.
-				// setFullName(data.user.user_metadata?.full_name || ''); // Keep for input value
-				// setPhone(data.user.user_metadata?.phone || ''); // Keep for input value
-			}
-			setLoading(false);
-		};
+                const getUser = async () => {
+                        const { data, error } = await supabase.auth.getUser();
+                        if (error || !data?.user) {
+                                router.push('/login');
+                        } else {
+                                setUser(data.user);
+                                // Initialize fullName and phone state for user input, leave them empty initially
+                                // The fetched metadata will be used for placeholders.
+                                // setFullName(data.user.user_metadata?.full_name || ''); // Keep for input value
+                                // setPhone(data.user.user_metadata?.phone || ''); // Keep for input value
+                                const { data: profileData } = await supabase
+                                        .from('profiles')
+                                        .select('first_name, last_name')
+                                        .eq('id', data.user.id)
+                                        .single();
+                                if (profileData) {
+                                        setUserProfile(profileData as { first_name: string | null; last_name: string | null });
+                                }
+                        }
+                        setLoading(false);
+                };
 		getUser();
 	}, [router, supabase.auth]);
 
-	const handleProfileUpdate = async (e: FormEvent) => {
-		e.preventDefault();
-		setProfileMessage('');
-		setProfileError('');
+        const handleProfileUpdate = async (e: FormEvent) => {
+                e.preventDefault();
+                setProfileMessage('');
+                setProfileError('');
 
-		if (!user) return;
+                if (!user) return;
 
-		// Use fullName and phone states which hold the user's input.
-		// If they are empty, it means the user wants to clear these fields.
-		const dataToUpdate: { full_name?: string; phone?: string } = {};
-		if (fullName.trim() === '' && user.user_metadata?.full_name) {
-			dataToUpdate.full_name = ''; // Explicitly set to empty if was not empty before
-		} else if (fullName.trim() !== '') {
-			dataToUpdate.full_name = fullName.trim();
-		}
+                const profileUpdates: { first_name?: string; last_name?: string } = {};
+                if (fullName.trim() !== '') {
+                        const parts = fullName.trim().split(' ');
+                        profileUpdates.first_name = parts.shift() || '';
+                        profileUpdates.last_name = parts.join(' ') || null;
+                }
 
-		if (phone.trim() === '' && user.user_metadata?.phone) {
-			dataToUpdate.phone = ''; // Explicitly set to empty if was not empty before
-		} else if (phone.trim() !== '') {
-			dataToUpdate.phone = phone.trim();
-		}
+                const userUpdateData: { phone?: string } = {};
+                if (phone.trim() === '' && user.user_metadata?.phone) {
+                        userUpdateData.phone = '';
+                } else if (phone.trim() !== '') {
+                        userUpdateData.phone = phone.trim();
+                }
 
+                if (
+                        Object.keys(profileUpdates).length === 0 &&
+                        Object.keys(userUpdateData).length === 0
+                ) {
+                        return;
+                }
 
-		// Only update if there's something to update
-		if (Object.keys(dataToUpdate).length === 0 && fullName === '' && phone === '') {
-		    // If both inputs are empty AND there was no previous data, do nothing or inform user.
-		    // Or if inputs match existing placeholder data and are not explicitly cleared.
-		    // For simplicity, let's assume if the state variables fullName and phone are empty,
-		    // and they were also empty in metadata, no update call is needed unless explicitly cleared.
-		    // This logic might need refinement based on desired UX for clearing fields.
-		    // Current logic: if input is empty string, it will try to set it to empty string.
-		}
+                let hasError = false;
 
+                if (Object.keys(profileUpdates).length > 0) {
+                        const { error: profileErr } = await supabase
+                                .from('profiles')
+                                .update(profileUpdates)
+                                .eq('id', user.id);
+                        if (profileErr) {
+                                setProfileError(`Profil güncellenirken hata: ${profileErr.message}`);
+                                toast.error(`Profil güncellenirken hata: ${profileErr.message}`);
+                                hasError = true;
+                        } else {
+                                setUserProfile((prev) => ({
+                                        first_name: profileUpdates.first_name ?? prev?.first_name ?? null,
+                                        last_name: profileUpdates.last_name ?? prev?.last_name ?? null,
+                                }));
+                                setFullName('');
+                        }
+                }
 
-		const { error } = await supabase.auth.updateUser({
-			data: dataToUpdate,
-		});
+                if (Object.keys(userUpdateData).length > 0) {
+                        const { error: authErr } = await supabase.auth.updateUser({
+                                data: userUpdateData,
+                        });
+                        if (authErr) {
+                                setProfileError(`Profil güncellenirken hata: ${authErr.message}`);
+                                toast.error(`Profil güncellenirken hata: ${authErr.message}`);
+                                hasError = true;
+                        }
+                }
 
-		if (error) {
-			setProfileError(`Profil güncellenirken hata: ${error.message}`);
-			toast.error(`Profil güncellenirken hata: ${error.message}`);
-		} else {
-			setProfileMessage('Profil başarıyla güncellendi!');
-			toast.success('Profil başarıyla güncellendi!');
-			// Refresh user data locally if needed or let Supabase auth state handle it
-			const { data: updatedUserData } = await supabase.auth.refreshSession();
-			if (updatedUserData.user) {
-				setUser(updatedUserData.user);
-			}
-		}
-	};
+                if (!hasError) {
+                        setProfileMessage('Profil başarıyla güncellendi!');
+                        toast.success('Profil başarıyla güncellendi!');
+                        const { data: updatedUserData } = await supabase.auth.refreshSession();
+                        if (updatedUserData.user) {
+                                setUser(updatedUserData.user);
+                        }
+                }
+        };
 
 	const handlePasswordChange = async (e: FormEvent) => {
 		e.preventDefault();
@@ -204,7 +230,11 @@ export default function PrivatePage() {
 								id="fullName"
 								type="text"
 								value={fullName} // Controlled input based on user typing
-								placeholder={user?.user_metadata?.full_name || 'Ad Soyad'}
+                                                                placeholder={
+                                                                        userProfile
+                                                                                ? `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 'Ad Soyad'
+                                                                                : 'Ad Soyad'
+                                                                }
 								onChange={(e) => setFullName(e.target.value)}
 								className="mt-1"
 							/>

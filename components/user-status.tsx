@@ -82,8 +82,8 @@ export function UserStatus() {
 					</button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent className="w-40" align="end">
-					<DropdownMenuItem asChild>
-						<Link href="/private">
+                                        <DropdownMenuItem asChild>
+                                                <Link href="/settings">
 							<div className="flex items-center">
 								<SettingsIcon className="mr-2 h-4 w-4" />
 								Ayarlar
