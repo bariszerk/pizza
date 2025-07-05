@@ -232,27 +232,16 @@ function DashboardContent() {
 		currentPresetValueRef.current = currentPresetValue;
 	}, [currentPresetValue]);
 
-	const updateURL = useCallback(
-		(newRange?: DateRange, newPreset?: string, newBranchId?: string | null) => {
-			const params = new URLSearchParams(searchParams.toString());
-			const rangeToUse = newRange || currentSelectedDateRangeRef.current;
-			const presetToUse = newPreset || currentPresetValueRef.current;
-
-			if (rangeToUse?.from)
-				params.set('from', format(rangeToUse.from, 'yyyy-MM-dd'));
-			else params.delete('from');
-			if (rangeToUse?.to) params.set('to', format(rangeToUse.to, 'yyyy-MM-dd'));
-			else params.delete('to');
-			if (presetToUse) params.set('preset', presetToUse);
-			else params.delete('preset');
-
-			if (newBranchId === null) params.delete('branch');
-			else if (newBranchId) params.set('branch', newBranchId);
-
-			router.replace(`/dashboard?${params.toString()}`, { scroll: false });
-		},
-		[router, searchParams]
-	);
+        const updateURL = useCallback(
+                (
+                        _newRange?: DateRange,
+                        _newPreset?: string,
+                        _newBranchId?: string | null
+                ) => {
+                        router.replace('/dashboard', { scroll: false });
+                },
+                [router]
+        );
 
 	const fetchDashboardData = useCallback(
 		async (branchIdToFetch: string | null, dateRangeToFetch: DateRange) => {
@@ -854,7 +843,7 @@ function DashboardContent() {
 								{branchDisplay}
 							</p>
 						</div>
-						<div className="flex items-center space-x-2">
+                                                <div className="flex flex-wrap items-center gap-2">
 							{availableBranches &&
 								availableBranches.length > 1 && ( // Sadece 1'den fazla şube varsa göster
 									<Select
@@ -862,7 +851,7 @@ function DashboardContent() {
 										onValueChange={(value) => handleBranchChange(value)}
 										disabled={pageLoading || availableBranches.length === 0}
 									>
-										<SelectTrigger className="w-full sm:w-auto sm:min-w-[180px] h-10">
+                                                                        <SelectTrigger className="min-w-[180px] h-10">
 											<SelectValue placeholder="Bir şube seçin..." />
 										</SelectTrigger>
 										<SelectContent>
@@ -901,12 +890,12 @@ function DashboardContent() {
 								<DollarSignIcon className="h-4 w-4 mr-1" />
 								Finansal Veri Girişi
 							</Button>
-							<DateRangePicker
-								onDateChange={handleDateChange}
-								initialDateRange={selectedDateRange}
-								initialPresetValue={currentPresetValue}
-								className="w-full sm:w-auto" // Replaced min-w-max
-							/>
+                                                        <DateRangePicker
+                                                                onDateChange={handleDateChange}
+                                                                initialDateRange={selectedDateRange}
+                                                                initialPresetValue={currentPresetValue}
+                                                                className="flex-1 min-w-[260px] sm:w-auto"
+                                                        />
 						</div>
 					</div>
 					<Tabs defaultValue="overview" className="space-y-4">
