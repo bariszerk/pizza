@@ -6,10 +6,22 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react"
-import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
+import {
+  DayButton,
+  DayPicker,
+  getDefaultClassNames,
+  type DropdownProps,
+} from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 function Calendar({
   className,
@@ -37,7 +49,7 @@ function Calendar({
       captionLayout={captionLayout}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString("default", { month: "short" }),
+          date.toLocaleString("tr", { month: "short" }),
         ...formatters,
       }}
       classNames={{
@@ -70,12 +82,12 @@ function Calendar({
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
-          "relative has-focus:border-ring border border-input shadow-xs has-focus:ring-ring/50 has-focus:ring-[3px] rounded-md",
+          "relative has-focus:border-ring border border-input shadow-xs has-focus:ring-ring/50 has-focus:ring-[3px] rounded-md bg-background dark:bg-input/30",
           defaultClassNames.dropdown_root
         ),
         dropdown: cn("absolute inset-0 opacity-0", defaultClassNames.dropdown),
         caption_label: cn(
-          "select-none font-medium",
+          "select-none font-medium text-foreground",
           captionLayout === "label"
             ? "text-sm"
             : "rounded-md pl-2 pr-1 flex items-center gap-1 text-sm h-8 [&>svg]:text-muted-foreground [&>svg]:size-3.5",
@@ -162,6 +174,7 @@ function Calendar({
             </td>
           )
         },
+        Dropdown: CalendarDropdown,
         ...components,
       }}
       {...props}
@@ -204,6 +217,47 @@ function CalendarDayButton({
       )}
       {...props}
     />
+  )
+}
+
+function CalendarDropdown(props: DropdownProps) {
+  const {
+    classNames,
+    components: _components,
+    options,
+    className,
+    value,
+    onChange,
+    disabled,
+    ...selectProps
+  } = props
+  const handleValueChange = React.useCallback(
+    (val: string) => {
+      onChange?.({ target: { value: val } } as React.ChangeEvent<HTMLSelectElement>)
+    },
+    [onChange]
+  )
+
+  return (
+    <div data-disabled={disabled} className={cn(classNames.dropdown_root)}>
+      <Select
+        value={value?.toString()}
+        onValueChange={handleValueChange}
+        disabled={disabled}
+        {...(selectProps as any)}
+      >
+        <SelectTrigger size="sm" className={cn(classNames.caption_label, className)}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="min-w-[8rem]">
+          {options?.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value.toString()} disabled={opt.disabled}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   )
 }
 

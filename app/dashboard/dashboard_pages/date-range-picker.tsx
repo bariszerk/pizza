@@ -321,13 +321,16 @@ export function DateRangePicker({
 	};
 
 	return (
-		<div
-			className={cn('flex flex-col sm:flex-row items-stretch sm:items-center gap-2', className)}
-		>
-			<Select value={selectedPreset} onValueChange={handlePresetChange}>
-				<SelectTrigger className="w-full sm:w-[280px] h-10">
-					<SelectValue placeholder="Tarih Aralığı Seçin" />
-				</SelectTrigger>
+                <div
+                        className={cn(
+                                'flex flex-row flex-wrap items-stretch sm:items-center gap-2',
+                                className
+                        )}
+                >
+                       <Select value={selectedPreset} onValueChange={handlePresetChange}>
+                                <SelectTrigger className="w-auto sm:w-[280px] h-10">
+                                        <SelectValue placeholder="Tarih Aralığı Seçin" />
+                                </SelectTrigger>
 				<SelectContent>
 					{PRESETS_LOCAL.map((preset) => (
 						<SelectItem key={preset.value} value={preset.value}>
@@ -337,34 +340,34 @@ export function DateRangePicker({
 				</SelectContent>
 			</Select>
 
-			<Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-				<div className="flex flex-col items-stretch space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2 sm:gap-0 sm:w-[280px]">
-					<PopoverTrigger asChild>
-						<Button
-							variant="outline"
-							className={cn(
-								'w-full sm:flex-1 justify-start text-left font-normal h-10', // Genişlik artırıldı
-								!dateRange?.from && 'text-muted-foreground'
-							)}
-							onClick={() => handleDateInputClick('from')}
-						>
-							<CalendarIcon className="mr-2 h-4 w-4" />
-							{formatDateForDisplay(dateRange?.from)}
-						</Button>
-					</PopoverTrigger>
-					<span className="text-muted-foreground hidden sm:inline">-</span>
-					<PopoverTrigger asChild>
-						<Button
-							variant="outline"
-							className={cn(
-								'w-full sm:flex-1 justify-start text-left font-normal h-10', // Genişlik artırıldı
-								!dateRange?.to && 'text-muted-foreground'
-							)}
-							onClick={() => handleDateInputClick('to')}
-						>
-							<CalendarIcon className="mr-2 h-4 w-4" />
-							{formatDateForDisplay(dateRange?.to)}
-						</Button>
+                        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                                <div className="flex flex-row flex-wrap items-stretch space-y-2 sm:space-y-0 sm:space-x-2 sm:gap-0 sm:w-[280px]">
+                                        <PopoverTrigger asChild>
+                                                <Button
+                                                        variant="outline"
+                                                        className={cn(
+                                                                'min-w-[120px] flex-1 justify-start text-left font-normal h-10',
+                                                                !dateRange?.from && 'text-muted-foreground'
+                                                        )}
+                                                        onClick={() => handleDateInputClick('from')}
+                                                >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {formatDateForDisplay(dateRange?.from)}
+                                                </Button>
+                                        </PopoverTrigger>
+                                        <span className="text-muted-foreground hidden sm:inline">-</span>
+                                        <PopoverTrigger asChild>
+                                                <Button
+                                                        variant="outline"
+                                                        className={cn(
+                                                                'min-w-[120px] flex-1 justify-start text-left font-normal h-10',
+                                                                !dateRange?.to && 'text-muted-foreground'
+                                                        )}
+                                                        onClick={() => handleDateInputClick('to')}
+                                                >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {formatDateForDisplay(dateRange?.to)}
+                                                </Button>
 					</PopoverTrigger>
 				</div>
 				<PopoverContent className="w-auto p-0" align="end">
