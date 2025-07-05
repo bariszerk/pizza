@@ -605,7 +605,7 @@ function DashboardContent() {
 					<Skeleton className="h-9 w-48 mb-1" />
 					<Skeleton className="h-5 w-64" />
 				</div>
-				<div className="flex items-center space-x-2">
+                                                <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2">
 					<Skeleton className="h-10 w-40" />
 					<Skeleton className="h-10 w-[280px]" />
 				</div>
