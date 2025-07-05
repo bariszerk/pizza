@@ -342,7 +342,7 @@ export default function BranchPage() {
         };
 
 	return (
-		<div className="container mx-auto px-4 py-8 md:py-12">
+                <div className="container mx-auto px-4 py-4 md:py-6">
 			<AnimatePresence>
 				<motion.div
 					initial={{ opacity: 0, y: 20 }}
@@ -365,7 +365,7 @@ export default function BranchPage() {
 								)}
 							</p>
 						</CardHeader>
-						<CardContent className="p-6 md:p-8 space-y-6">
+                                                <CardContent className="p-4 md:p-6 space-y-4">
 							<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
 								<div className="flex flex-col items-center lg:items-start">
 									<Label className="mb-2 text-base font-medium self-start">
@@ -385,7 +385,7 @@ export default function BranchPage() {
                                                                         </p>
 								</div>
 
-								<form onSubmit={handleSubmit} className="space-y-5">
+                                                                <form onSubmit={handleSubmit} className="space-y-4">
 									<div>
 										<Label htmlFor="earnings" className="text-base font-medium">
 											Toplam Kazanç (₺)
