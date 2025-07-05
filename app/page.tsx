@@ -6,9 +6,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {
-	const [role, setRole] = useState<string | null>(null);
-	const [loading, setLoading] = useState(true);
-	const router = useRouter();
+        const [loading, setLoading] = useState(true);
+        const router = useRouter();
 
 	useEffect(() => {
 		async function fetchRole() {
@@ -35,8 +34,7 @@ export default function Home() {
 				return;
 			}
 
-			const userRole = data.role;
-			setRole(userRole);
+                        const userRole = data.role;
 
 			if (userRole === 'user') {
 				router.push('/authorization-pending');

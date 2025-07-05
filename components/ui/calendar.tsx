@@ -6,7 +6,12 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react"
-import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
+import {
+  DayButton,
+  DayPicker,
+  getDefaultClassNames,
+  type DropdownProps,
+} from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -215,28 +220,17 @@ function CalendarDayButton({
   )
 }
 
-type DropdownOption = {
-  value: number
-  label: string
-  disabled: boolean
-}
-
-function CalendarDropdown({
-  classNames,
-  options,
-  className,
-  value,
-  onChange,
-  disabled,
-  ...rest
-}: {
-  classNames: Record<string, string>
-  options?: DropdownOption[]
-} & Omit<React.ComponentProps<typeof Select>, 'onValueChange' | 'value'> & {
-  className?: string
-  value?: number
-  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void
-}) {
+function CalendarDropdown(props: DropdownProps) {
+  const {
+    classNames,
+    components: _components,
+    options,
+    className,
+    value,
+    onChange,
+    disabled,
+    ...selectProps
+  } = props
   const handleValueChange = React.useCallback(
     (val: string) => {
       onChange?.({ target: { value: val } } as React.ChangeEvent<HTMLSelectElement>)
@@ -250,7 +244,7 @@ function CalendarDropdown({
         value={value?.toString()}
         onValueChange={handleValueChange}
         disabled={disabled}
-        {...rest}
+        {...(selectProps as any)}
       >
         <SelectTrigger size="sm" className={cn(classNames.caption_label, className)}>
           <SelectValue />
