@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'; // useCallback eklendi
 import { createClient } from '@/utils/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { format } from 'date-fns';
@@ -124,17 +124,38 @@ export default function FinancialLogsPage() {
               <pre className="mt-2 whitespace-pre-wrap">{error}</pre>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[200px]">Tarih</TableHead>
-                  <TableHead>Şube</TableHead>
-                  <TableHead>Kullanıcı</TableHead>
-                  <TableHead>Eylem</TableHead>
-                  <TableHead>Veri</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="space-y-4 md:hidden">
+                {logs.map((log) => (
+                  <Card key={log.id} className="text-sm">
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        {format(new Date(log.created_at), 'PPpp', { locale: tr })}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {log.branchName} | {log.userEmail}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {renderAction(log.action)}
+                      <Card className="bg-muted p-2 text-xs border border-border">
+                        <pre className="whitespace-pre-wrap break-all text-foreground">{JSON.stringify(log.data, null, 2)}</pre>
+                      </Card>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <Table className="hidden md:table">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">Tarih</TableHead>
+                    <TableHead>Şube</TableHead>
+                    <TableHead>Kullanıcı</TableHead>
+                    <TableHead>Eylem</TableHead>
+                    <TableHead>Veri</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                 {logs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell>
@@ -152,6 +173,7 @@ export default function FinancialLogsPage() {
                 ))}
               </TableBody>
             </Table>
+            </>
           )}
         </CardContent>
       </Card>
