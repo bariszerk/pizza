@@ -10,6 +10,13 @@ import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 function Calendar({
   className,
@@ -162,6 +169,7 @@ function Calendar({
             </td>
           )
         },
+        Dropdown: CalendarDropdown,
         ...components,
       }}
       {...props}
@@ -204,6 +212,58 @@ function CalendarDayButton({
       )}
       {...props}
     />
+  )
+}
+
+type DropdownOption = {
+  value: number
+  label: string
+  disabled: boolean
+}
+
+function CalendarDropdown({
+  classNames,
+  options,
+  className,
+  value,
+  onChange,
+  disabled,
+  ...rest
+}: {
+  classNames: Record<string, string>
+  options?: DropdownOption[]
+} & Omit<React.ComponentProps<typeof Select>, 'onValueChange' | 'value'> & {
+  className?: string
+  value?: number
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void
+}) {
+  const handleValueChange = React.useCallback(
+    (val: string) => {
+      onChange?.({ target: { value: val } } as React.ChangeEvent<HTMLSelectElement>)
+    },
+    [onChange]
+  )
+
+  return (
+    <div data-disabled={disabled} className={cn(classNames.dropdown_root)}>
+      <Select
+        value={value?.toString()}
+        onValueChange={handleValueChange}
+        disabled={disabled}
+        {...rest}
+      >
+        <SelectTrigger size="sm" className={cn(classNames.caption_label, className)}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="min-w-[8rem]">
+          {options?.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value.toString()} disabled={opt.disabled}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   )
 }
 
