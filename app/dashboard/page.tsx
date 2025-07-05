@@ -601,7 +601,7 @@ function DashboardContent() {
 			</div>
 			<Tabs defaultValue="overview" className="space-y-4">
 				<TabsContent value="overview" className="space-y-4">
-					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                                        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-5">
 						{[...Array(5)].map((_, i) => (
 							<Card key={i}>
 								<CardHeader className="pb-2">
@@ -629,9 +629,9 @@ function DashboardContent() {
 	);
 
 	// Auth Yükleniyor Durumu
-	if (authLoading) {
-		return <div className="flex-1 space-y-4 p-8 pt-6">{renderSkeletons()}</div>;
-	}
+        if (authLoading) {
+                return <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">{renderSkeletons()}</div>;
+        }
 
 	// Sayfa Hatası Durumu (Auth hatası veya sayfa içi diğer hatalar)
 	if (error && !showBranchSelectModal) {
@@ -763,13 +763,13 @@ function DashboardContent() {
 	}
 
 	// selectedBranchId null ise ve modal kapalıysa (örneğin hiç şube yoksa) iskelet göster.
-	if (
-		pageLoading ||
-		!dashboardData ||
-		(!selectedBranchId && (dashboardData?.availableBranches?.length ?? 0) > 0)
-	) {
-		return <div className="flex-1 space-y-4 p-8 pt-6">{renderSkeletons()}</div>;
-	}
+        if (
+                pageLoading ||
+                !dashboardData ||
+                (!selectedBranchId && (dashboardData?.availableBranches?.length ?? 0) > 0)
+        ) {
+                return <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">{renderSkeletons()}</div>;
+        }
 	// Eğer hiç şube yoksa ve selectedBranchId null ise, bir mesaj göster
 	if (
 		!selectedBranchId &&
@@ -900,7 +900,7 @@ function DashboardContent() {
 					</div>
 					<Tabs defaultValue="overview" className="space-y-4">
 						<TabsContent value="overview" className="space-y-4">
-							<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                                                        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-5">
 								<Card>
 									<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 										<CardTitle className="text-sm font-medium">
@@ -993,7 +993,7 @@ function DashboardContent() {
 								</Card>
 							</div>
 
-							<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								{' '}
 								{/* Yan yana için lg:grid-cols-2 */}
 								<Card className="col-span-1">
