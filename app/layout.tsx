@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { useAutoSignOut } from '@/hooks/auto-sign-out';
 import './globals.css';
+import { usePathname } from 'next/navigation';
 
 export default function RootLayout({
 	children,
@@ -12,6 +13,13 @@ export default function RootLayout({
 	children: React.ReactNode;
 }) {
 	useAutoSignOut(10);
+
+	const pathname = usePathname();
+
+    const noNavPaths = ['/login', '/signup', '/forgot-password', '/update-password', '/verify-email'];
+
+	 const showNavbar = !noNavPaths.includes(pathname);
+
 	return (
 		<html lang="tr" suppressHydrationWarning>
 			<head>
@@ -19,7 +27,7 @@ export default function RootLayout({
 			</head>
 			<body>
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-					<TopNavbar />
+					{showNavbar && <TopNavbar />}
 					<main className="container mx-auto">
 						<TransitionWrapper>{children}</TransitionWrapper>
 					</main>
