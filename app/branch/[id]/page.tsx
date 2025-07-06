@@ -77,11 +77,12 @@ export default function BranchPage() {
 			setBranchName(null); // Şube adını sıfırla
 
 			// Şube ID'sinden şube adını al (kullanıcı arayüzünde göstermek için)
-			const { data: branchData, error: branchError } = await supabase
-				.from('branches')
-				.select('name')
-				.eq('id', branchIdFromUrl) // Artık 'id' ile sorguluyoruz
-				.single();
+                                const { data: branchData, error: branchError } = await supabase
+                                        .from('branches')
+                                        .select('name')
+                                        .eq('id', branchIdFromUrl) // Artık 'id' ile sorguluyoruz
+                                        .eq('archived', false)
+                                        .single();
 
 			if (branchError || !branchData) {
 				toast.error(

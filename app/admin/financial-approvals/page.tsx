@@ -106,7 +106,12 @@ export default function FinancialApprovalsPage() {
       const enriched = await Promise.all(
         requests.map(async (r) => {
           const [b, u] = await Promise.all([
-            supabase.from('branches').select('name').eq('id', r.branch_id).single(),
+            supabase
+              .from('branches')
+              .select('name')
+              .eq('id', r.branch_id)
+              .eq('archived', false)
+              .single(),
             supabase.from('profiles').select('email').eq('id', r.user_id).single(),
           ]);
           return {

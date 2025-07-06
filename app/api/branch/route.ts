@@ -37,10 +37,11 @@ export async function POST(request: Request) {
     }
 
     // Aynı isimde başka bir şube olup olmadığını kontrol et
-    const { data: existingBranch, error: checkError } = await supabase
+  const { data: existingBranch, error: checkError } = await supabase
         .from('branches')
         .select('id')
         .eq('name', name.trim())
+        .eq('archived', false)
         .maybeSingle();
 
     if (checkError) {
