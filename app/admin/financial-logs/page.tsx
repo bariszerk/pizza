@@ -61,7 +61,7 @@ export default function FinancialLogsPage() {
               .from('branches')
               .select('name')
               .eq('id', log.branch_id)
-              .eq('archived', false)
+              // .eq('archived', false)
               .single(),
             supabase
               .from('profiles')
