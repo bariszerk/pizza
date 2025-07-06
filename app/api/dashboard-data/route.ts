@@ -95,10 +95,11 @@ export async function GET(request: Request) {
 		);
 	}
 
-	const { data: allBranchesData, error: allBranchesError } = await supabase
-		.from('branches')
-		.select('id, name')
-		.order('name', { ascending: true });
+        const { data: allBranchesData, error: allBranchesError } = await supabase
+                .from('branches')
+                .select('id, name')
+                .eq('archived', false)
+                .order('name', { ascending: true });
 
 	if (allBranchesError || !allBranchesData) {
 		return NextResponse.json(

@@ -63,11 +63,12 @@ export default function AdminBranchFinancialsPage() {
 		}
 
 		// Şube adından şube kimliğini al
-		const { data: branchByName, error: branchByNameError } = await supabase
-			.from('branches')
-			.select('id, name')
-			.eq('name', decodeURIComponent(branchNameParam)) // URL'den gelen adı decode et
-			.single();
+                const { data: branchByName, error: branchByNameError } = await supabase
+                        .from('branches')
+                        .select('id, name')
+                        .eq('name', decodeURIComponent(branchNameParam)) // URL'den gelen adı decode et
+                        .eq('archived', false)
+                        .single();
 
 		if (branchByNameError || !branchByName) {
 			toast.error(`'${decodeURIComponent(branchNameParam)}' adlı şube bulunamadı veya alınamadı.`);
@@ -144,11 +145,12 @@ export default function AdminBranchFinancialsPage() {
 			setIsLoadingData(false);
 			return;
 		}
-		const { data: branchData, error: branchError } = await supabase
-			.from('branches')
-			.select('id')
-			.eq('name', decodeURIComponent(branchNameParam))
-			.single();
+                const { data: branchData, error: branchError } = await supabase
+                        .from('branches')
+                        .select('id')
+                        .eq('name', decodeURIComponent(branchNameParam))
+                        .eq('archived', false)
+                        .single();
 
 		if (branchError || !branchData) {
 			toast.error("Finansal veri yüklenirken şube kimliği alınamadı.");
@@ -237,11 +239,12 @@ export default function AdminBranchFinancialsPage() {
 			setIsSubmitting(false);
 			return;
 		}
-		const { data: branchData, error: branchError } = await supabase
-			.from('branches')
-			.select('id')
-			.eq('name', decodeURIComponent(branchNameParam))
-			.single();
+                const { data: branchData, error: branchError } = await supabase
+                        .from('branches')
+                        .select('id')
+                        .eq('name', decodeURIComponent(branchNameParam))
+                        .eq('archived', false)
+                        .single();
 
 		if (branchError || !branchData) {
 			toast.error("İşlem sırasında şube kimliği alınamadı.");

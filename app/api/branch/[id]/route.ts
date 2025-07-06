@@ -53,6 +53,7 @@ export async function POST(
     .from('branches')
     .select('id')
     .eq('id', branchId)
+    .eq('archived', false)
     .maybeSingle();
 
   if (branchCheckError) {

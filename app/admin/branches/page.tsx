@@ -49,12 +49,13 @@ import { useCallback, useEffect, useState } from 'react';
 
 // Tipler
 type Branch = {
-	id: string;
-	name: string;
-	address: string | null;
-	created_at: string;
-	assigned_managers?: Profile[];
-	assigned_staff?: UserProfile[];
+        id: string;
+        name: string;
+        address: string | null;
+        created_at: string;
+        archived?: boolean;
+        assigned_managers?: Profile[];
+        assigned_staff?: UserProfile[];
 };
 
 type Profile = {
@@ -139,11 +140,12 @@ export default function AdminBranchesPage() {
 
 				let finalBranches: Branch[] = [];
 				if (userRole === 'admin') {
-					const { data: adminBranchesData, error: branchesError } =
-						await supabase
-							.from('branches')
-							.select('*')
-							.order('name', { ascending: true });
+                                        const { data: adminBranchesData, error: branchesError } =
+                                                await supabase
+                                                        .from('branches')
+                                                        .select('*')
+                                                        .eq('archived', false)
+                                                        .order('name', { ascending: true });
 					if (branchesError) throw branchesError;
 					finalBranches = adminBranchesData || [];
 				} else if (userRole === 'manager') {
@@ -154,12 +156,13 @@ export default function AdminBranchesPage() {
 					if (assignmentsError) throw assignmentsError;
 					if (assignments && assignments.length > 0) {
 						const branchIds = assignments.map((a) => a.branch_id);
-						const { data: managerBranchesData, error: managerBranchesError } =
-							await supabase
-								.from('branches')
-								.select('*')
-								.in('id', branchIds)
-								.order('name', { ascending: true });
+                                                const { data: managerBranchesData, error: managerBranchesError } =
+                                                        await supabase
+                                                                .from('branches')
+                                                                .select('*')
+                                                                .in('id', branchIds)
+                                                                .eq('archived', false)
+                                                                .order('name', { ascending: true });
 						if (managerBranchesError) throw managerBranchesError;
 						finalBranches = managerBranchesData || [];
 					}
@@ -267,10 +270,11 @@ export default function AdminBranchesPage() {
 		setFormError(null);
 		try {
 			// İstemci tarafı ön kontrol (isteğe bağlı ama kullanıcı deneyimi için iyi)
-			const { data: existingBranches, error: fetchError } = await supabase
-				.from('branches')
-				.select('name')
-				.eq('name', newBranchName.trim());
+                                const { data: existingBranches, error: fetchError } = await supabase
+                                        .from('branches')
+                                        .select('name')
+                                        .eq('name', newBranchName.trim())
+                                        .eq('archived', false);
 
 			if (fetchError) {
 				console.warn("Şube adı kontrolü sırasında hata:", fetchError.message);
@@ -323,18 +327,18 @@ export default function AdminBranchesPage() {
 		}
 	};
 
-	const handleDeleteBranch = async (branchId: string) => {
-		if (currentUserRole !== 'admin') return;
-		setConfirmDialogProps({
-			title: 'Şubeyi Sil',
-			description:
-				'Bu şubeyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz. Şubeye atanmış tüm yönetici ve personel bağlantıları da kaldırılacaktır.',
-			confirmText: 'Evet, Sil',
-			onConfirm: async () => {
-				setConfirmDialogOpen(false);
-				setIsSubmitting(true);
-				setPageError(null);
-				try {
+        const handleDeleteBranch = async (branchId: string) => {
+                if (currentUserRole !== 'admin') return;
+                setConfirmDialogProps({
+                        title: 'Şubeyi Arşivle',
+                        description:
+                                'Bu şubeyi arşivlemek istediğinizden emin misiniz? Şubeye atanmış tüm yönetici ve personel bağlantıları da kaldırılacaktır.',
+                        confirmText: 'Evet, Arşivle',
+                        onConfirm: async () => {
+                                setConfirmDialogOpen(false);
+                                setIsSubmitting(true);
+                                setPageError(null);
+                                try {
 					const { error: assignDelErr } = await supabase
 						.from('manager_branch_assignments')
 						.delete()
@@ -353,29 +357,29 @@ export default function AdminBranchesPage() {
 							'Personel şube bağlantıları güncellenirken bir hata oluştu: ' +
 								staffUpdErr.message
 						);
-					const { error: branchDelErr } = await supabase
-						.from('branches')
-						.delete()
-						.eq('id', branchId);
-					if (branchDelErr)
-						throw new Error(
-							'Şube silinirken bir hata oluştu: ' + branchDelErr.message
-						);
-					if (currentUserId && currentUserRole)
-						await fetchData(currentUserId, currentUserRole);
-				} catch (err: unknown) {
-					setPageError(
-						err instanceof Error
-							? err.message
-							: 'Şube silinirken bilinmeyen bir hata oluştu.'
-					);
-				} finally {
-					setIsSubmitting(false);
-				}
-			},
-		});
-		setConfirmDialogOpen(true);
-	};
+                                        const { error: branchUpdErr } = await supabase
+                                                .from('branches')
+                                                .update({ archived: true })
+                                                .eq('id', branchId);
+                                        if (branchUpdErr)
+                                                throw new Error(
+                                                        'Şube arşivlenirken bir hata oluştu: ' + branchUpdErr.message
+                                                );
+                                        if (currentUserId && currentUserRole)
+                                                await fetchData(currentUserId, currentUserRole);
+                                } catch (err: unknown) {
+                                        setPageError(
+                                                err instanceof Error
+                                                        ? err.message
+                                                        : 'Şube arşivlenirken bilinmeyen bir hata oluştu.'
+                                        );
+                                } finally {
+                                        setIsSubmitting(false);
+                                }
+                        },
+                });
+                setConfirmDialogOpen(true);
+        };
 
 	const openAssignManagerModal = (branch: Branch) => {
 		if (currentUserRole !== 'admin') return;
@@ -811,10 +815,10 @@ export default function AdminBranchesPage() {
 																className="w-full"
 																onClick={() => handleDeleteBranch(branch.id)}
 																disabled={isSubmitting}
-																title="Şubeyi Kalıcı Olarak Sil"
+                                                                                title="Şubeyi Arşivle"
 															>
 																<Trash2Icon className="h-3 w-3 mr-1" />
-																Şubeyi Sil
+                                                                                Şubeyi Arşivle
 															</Button>
 														</div>
 													)}
@@ -945,7 +949,7 @@ export default function AdminBranchesPage() {
 																size="sm"
 																onClick={() => handleDeleteBranch(branch.id)}
 																disabled={isSubmitting}
-																title="Şubeyi Kalıcı Olarak Sil"
+                                                                                title="Şubeyi Arşivle"
 															>
 																<Trash2Icon className="h-4 w-4" />
 															</Button>

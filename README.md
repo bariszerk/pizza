@@ -13,6 +13,7 @@ Bu uygulama, şubelerin finansal durumlarını merkezi bir noktadan izlemek, gel
 
 *   **Kullanıcı Rolleri:** Admin ve Şube Yöneticisi gibi farklı yetkilere sahip kullanıcı rolleri.
 *   **Şube Yönetimi:** Sisteme yeni şubeler ekleme ve mevcut şubeleri yönetme.
+*   **Şube Arşivleme:** Kullanılmayan şubeleri silmek yerine arşivleyerek listelerden gizleyebilme.
 *   **Finansal Veri Girişi:** Her şube için günlük gelir ve gider kayıtlarının yapılması.
 *   **Gösterge Paneli (Dashboard):**
     *   Belirli bir tarih aralığı için toplam gelir, toplam gider ve net kâr gibi özet bilgilerin görüntülenmesi.
@@ -22,3 +23,7 @@ Bu uygulama, şubelerin finansal durumlarını merkezi bir noktadan izlemek, gel
 *   **Raporlama:** Temel finansal raporların (ileride eklenebilir) oluşturulması.
 
 Bu proje, işletmelerin veya kurumların şube ağlarındaki finansal akışlarını daha etkin bir şekilde yönetmelerine yardımcı olmayı hedefler.
+
+## Veritabanı Güncellemesi
+
+`branches` tablosuna `archived` adında yeni bir boolean alan eklenmiştir. Varsayılan değeri `false`'dur. Kullanılmayan şubeleri arşivlemek için bu alan `true` yapılmalıdır.
