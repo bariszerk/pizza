@@ -21,11 +21,11 @@ export default function Home() {
 				return;
 			}
 
-			const { data, error } = await supabase
-				.from('profiles')
-				.select('role')
-				.eq('id', user.id)
-				.single();
+                        const { data, error } = await supabase
+                                .from('profiles')
+                                .select('role, staff_branch_id')
+                                .eq('id', user.id)
+                                .single();
 
 			if (error || !data) {
 				console.error('Error fetching profile:', error);
@@ -36,11 +36,17 @@ export default function Home() {
 
                         const userRole = data.role;
 
-			if (userRole === 'user') {
-				router.push('/authorization-pending');
-			} else {
-				router.push('/dashboard');
-			}
+                        if (userRole === 'user') {
+                                router.push('/authorization-pending');
+                        } else if (userRole === 'branch_staff') {
+                                if (data.staff_branch_id) {
+                                        router.push(`/branch/${data.staff_branch_id}`);
+                                } else {
+                                        router.push('/authorization-pending');
+                                }
+                        } else {
+                                router.push('/dashboard');
+                        }
 			setLoading(false);
 		}
 		fetchRole();
