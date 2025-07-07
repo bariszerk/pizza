@@ -120,12 +120,13 @@ const LOCAL_STORAGE_PRESET_KEY = 'lastSelectedPreset';
 function DashboardContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const {
-		user,
-		role: userRoleFromAuth, // userRole olarak yeniden adlandırıldı
-		loading: authLoading,
-		error: authError,
-	} = useAuth();
+        const {
+                user,
+                role: userRoleFromAuth, // userRole olarak yeniden adlandırıldı
+                staffBranchId,
+                loading: authLoading,
+                error: authError,
+        } = useAuth();
 	const today = startOfDay(new Date());
 
 	const currentSelectedDateRangeRef = useRef<DateRange | undefined>(undefined);
@@ -217,12 +218,20 @@ function DashboardContent() {
 				router.push('/login?message=Giriş yapmanız gerekiyor.');
 				return;
 			}
-			if (userRoleFromAuth !== 'admin' && userRoleFromAuth !== 'manager') {
-				router.push('/?message=Bu sayfaya erişim yetkiniz yok.');
-				return;
-			}
+                        if (userRoleFromAuth !== 'admin' && userRoleFromAuth !== 'manager') {
+                                if (userRoleFromAuth === 'branch_staff') {
+                                        if (staffBranchId) {
+                                                router.push(`/branch/${staffBranchId}`);
+                                        } else {
+                                                router.push('/authorization-pending');
+                                        }
+                                } else {
+                                        router.push('/?message=Bu sayfaya erişim yetkiniz yok.');
+                                }
+                                return;
+                        }
 		}
-	}, [user, userRoleFromAuth, authLoading, authError, router]);
+        }, [user, userRoleFromAuth, staffBranchId, authLoading, authError, router]);
 
 	useEffect(() => {
 		currentSelectedDateRangeRef.current = selectedDateRange;
